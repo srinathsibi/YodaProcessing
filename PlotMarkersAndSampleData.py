@@ -1,5 +1,5 @@
 #Author: Srinath Sibi, Email: ssibi@stanford.edu
-#Purpose: To plot the markers and see how we can change the event markers
+#Purpose: To plot the markers and see how we can change the event markers in order to restore the
 import glob, os, sys, shutil,re
 import matplotlib as plt
 import numpy as np
