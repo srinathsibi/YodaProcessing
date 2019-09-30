@@ -17,7 +17,7 @@
 # 2) For CAT 2: The ECG values are under the first two columns mislabelled as EMG and are present in Columns 37 , 38 , 39 , 40.
 # 3) For CAT3 (participant 12): The ECG values are in the columns 32 , 33 , 34 , 35
 # Drive Details: 1) Brake -> Col 14 ; Speed -> 16 ; Steer -> 17 ; Throttle -> 18
-# PPG Details : 1) PPG heart beat-> Col 28 ;
+# PPG Details : 1) PPG heart beat-> Col 28 ; 2) IBI (msecs) -> Col 29
 # GSR Details : 1) GSR CAL (micro siemens)-> Col 30
 import os, sys, csv , re
 import matplotlib as plt
@@ -101,20 +101,67 @@ if __name__ == '__main__':
                 if DEBUG==0 and participant in CAT3:    print "Participant in CAT3 , " , participant
                 #Now to make sure that the rows are properly divided
                 re_data = []
-                #Adding a header row to
+                # We are abandoning the process of compiling the data into a single array for each participant. It seems too large and almost always ends in the code crashing. Instead, we
+                # are going to write the data as it is being read from the file into respective, GSR, HR, Drive and PPG data files. This would be better since we don't have to store the variables in a uber-large
+                # array.
+                #First we make the files
+                #File Names
+                GSR_FILE_NAME = MAINPATH+'/Data/'+participant+'/GSR.csv'
+                HR_FILE_NAME = MAINPATH+'/Data/'+participant+'/HR.csv'
+                DRIVE_FILE_NAME = MAINPATH+'/Data/'+participant+'/DRIVE.csv'
+                PPG_FILE_NAME = MAINPATH+'/Data/'+participant+'/PPG.csv'
+                #open the files
+                GSR_FILE = open(GSR_FILE_NAME, 'wb')
+                HR_FILE = open(HR_FILE_NAME, 'wb')
+                DRIVE_FILE = open(DRIVE_FILE_NAME, 'wb')
+                PPG_FILE = open(PPG_FILE_NAME , 'wb')
+                #Declaring writers
+                GSR_WRITER = csv.writer(GSR_FILE)
+                HR_WRITER = csv.writer(HR_FILE)
+                DRIVE_WRITER = csv.writer(DRIVE_FILE)
+                PPG_WRITER = csv.writer(PPG_FILE)
+                #Writing the header rows
+                GSR_WRITER.writerow(['TImestamp1' , 'TImestamp2' , 'Markers' , 'GSR( micro siemens )'])
+                HR_WRITER.writerow(['TImestamp1' , 'TImestamp2' , 'Markers' , 'ECG1' , 'ECG2' , 'ECG3' , 'ECG4'])
+                DRIVE_WRITER.writerow(['TImestamp1' , 'TImestamp2' , 'Markers' , 'Brake' , 'Speed' , 'Steer' , 'Throttle'])
+                PPG_WRITER.writerow(['TImestamp1' , 'TImestamp2' , 'Markers' , 'PPG Heart Rate'])
                 for row in data:
-                    #Order of data : <TImestamp 1 , TImestamp 2 , Markers , ECG , Brake , Speed , Steer , Throttle , PPG , PPG_RAW , GSR>
+                    #Order of data :
+                    #GSR FILE : < Timestamp 1 , TImestamp 2 , Markers, GSR >
+                    #DRIVE FILE :  < Timestamp 1 , TImestamp 2 , Markers , Brake , Speed , Steer , Throttle >
+                    #PPG FILE : <Timestamp 1 , Timestamp 2 , Markers , PPG , IBI(msecs)>
+                    ########
+                    #ECG File written after the if elif block
+                    #ECG FILE < Timestamp 1 , TImestamp 2 , Markers , ECG(1-4) >
+                    ########
+                    #Writing the GSR File
+                    GSR_WRITER.writerow([ float(row[0].split('\t')[9].split('_')[1]) , float(row[0].split('\t')[19]) , float(row[0].split('\t')[14]) , float(row[0].split('\t')[29]) ])
+                    ########
+                    #Writing the DRIVE File
+                    DRIVE_WRITER.writerow([ float(row[0].split('\t')[9].split('_')[1]) , float(row[0].split('\t')[19]) , float(row[0].split('\t')[14]) ,  float(row[0].split('\t')[13]) , float(row[0].split('\t')[15]) , float(row[0].split('\t')[16]) , float(row[0].split('\t')[17]) ])
+                    ########
+                    #Writing the PPG File
+                    GSR_WRITER.writerow([ float(row[0].split('\t')[9].split('_')[1]) , float(row[0].split('\t')[19]) , float(row[0].split('\t')[14]) , float(row[0].split('\t')[27]) , float(row[0].split('\t')[28]) ])
+                    ########
                     if participant in CAT1:
-                        re_data.append( [ row[0].split('\t')[9] , row[0].split('\t')[19] , row[0].split('\t')[14] , row[0].split('\t')[44] , row[0].split('\t')[45] , row[0].split('\t')[46] , row[0].split('\t')[47] , row[0].split('\t')[13] \
-                        , row[0].split('\t')[15] , row[0].split('\t')[16] , row[0].split('\t')[17] , row[0].split('\t')[27] , row[0].split('\t')[29] ] )
+                        HR_WRITER.writerow([ float(row[0].split('\t')[9].split('_')[1]) , float(row[0].split('\t')[19]) , float(row[0].split('\t')[14]) , float(row[0].split('\t')[44]) , float(row[0].split('\t')[45]) , float(row[0].split('\t')[46]) , float(row[0].split('\t')[47]) ])
+                        #re_data.append( [ row[0].split('\t')[9] , row[0].split('\t')[19] , row[0].split('\t')[14] , row[0].split('\t')[44] , row[0].split('\t')[45] , row[0].split('\t')[46] , row[0].split('\t')[47] , row[0].split('\t')[13] \
+                        #, row[0].split('\t')[15] , row[0].split('\t')[16] , row[0].split('\t')[17] , row[0].split('\t')[27] , row[0].split('\t')[28] , row[0].split('\t')[29] ] )
                     elif participant in CAT2:
-                        re_data.append( [ row[0].split('\t')[9] , row[0].split('\t')[19] , row[0].split('\t')[14] , row[0].split('\t')[36] , row[0].split('\t')[37] , row[0].split('\t')[38] , row[0].split('\t')[39] , row[0].split('\t')[13] \
-                        , row[0].split('\t')[15] , row[0].split('\t')[16] , row[0].split('\t')[17] , row[0].split('\t')[27] , row[0].split('\t')[29] ] )
+                        HR_WRITER.writerow([ float(row[0].split('\t')[9].split('_')[1]) , float(row[0].split('\t')[19]) , float(row[0].split('\t')[14]) , float(row[0].split('\t')[36]) , float(row[0].split('\t')[37]) , float(row[0].split('\t')[38]) , float(row[0].split('\t')[39]) ])
+                        #re_data.append( [ row[0].split('\t')[9] , row[0].split('\t')[19] , row[0].split('\t')[14] , row[0].split('\t')[36] , row[0].split('\t')[37] , row[0].split('\t')[38] , row[0].split('\t')[39] , row[0].split('\t')[13] \
+                        #, row[0].split('\t')[15] , row[0].split('\t')[16] , row[0].split('\t')[17] , row[0].split('\t')[27] , row[0].split('\t')[28] , row[0].split('\t')[29] ] )
                     elif participant in CAT3:
-                        re_data.append( [ row[0].split('\t')[9] , row[0].split('\t')[19] , row[0].split('\t')[14] , row[0].split('\t')[31] , row[0].split('\t')[32] , row[0].split('\t')[33] , row[0].split('\t')[34] , row[0].split('\t')[13] \
-                        , row[0].split('\t')[15] , row[0].split('\t')[16] , row[0].split('\t')[17] , row[0].split('\t')[27] , row[0].split('\t')[29] ] )
-                if DEBUG == 0:
-                    print "\n\n\nParticipant: " , participant , "\nFirst line of Reloaded Data : " , re_data[10000]
+                        HR_WRITER.writerow([ float(row[0].split('\t')[9].split('_')[1]) , float(row[0].split('\t')[19]) , float(row[0].split('\t')[14]) , float(row[0].split('\t')[31]) , float(row[0].split('\t')[32]) , float(row[0].split('\t')[33]) , float(row[0].split('\t')[34]) ])
+                        #re_data.append( [ row[0].split('\t')[9] , row[0].split('\t')[19] , row[0].split('\t')[14] , row[0].split('\t')[31] , row[0].split('\t')[32] , row[0].split('\t')[33] , row[0].split('\t')[34] , row[0].split('\t')[13] \
+                        #, row[0].split('\t')[15] , row[0].split('\t')[16] , row[0].split('\t')[17] , row[0].split('\t')[27] , row[0].split('\t')[28] , row[0].split('\t')[29] ] )
+                ########
+                #Closing the files
+                GSR_FILE.close()
+                HR_FILE.close()
+                DRIVE_FILE.close()
+                PPG_FILE.close()
+                # Files are all written and we plot from them instead of loading and keeping all of the data
             except Exception as e:
                 print " Exception recorded for participant : ", participant
                 print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
