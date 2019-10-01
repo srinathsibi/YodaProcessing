@@ -100,7 +100,7 @@ if __name__ == '__main__':
                 if DEBUG==0 and participant in CAT2:    print "Participant in CAT2 , " , participant
                 if DEBUG==0 and participant in CAT3:    print "Participant in CAT3 , " , participant
                 #Now to make sure that the rows are properly divided
-                re_data = []
+                #re_data = []
                 # We are abandoning the process of compiling the data into a single array for each participant. It seems too large and almost always ends in the code crashing. Instead, we
                 # are going to write the data as it is being read from the file into respective, GSR, HR, Drive and PPG data files. This would be better since we don't have to store the variables in a uber-large
                 # array.
