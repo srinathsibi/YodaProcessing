@@ -34,7 +34,7 @@ LOGFILE = os.path.abspath('.') + '/CurrentOutputFile.csv'#Using one output file 
 MAINPATH = os.path.abspath('.')#Always specify absolute path for all path specification and file specifications
 DEBUG = 0# To print statements for debugging
 TOPELIMINATION = 50
-READRAWFILE == 0# This is the flag to make sure that files are read from the start
+READRAWFILE = 1# This is the flag to make sure that files are read from the start
 #The 3 categories are defined here. Check here before adding the
 #We use this function as a key to sorting the list of folders (participants).
 CAT1 = [ 'P002', 'P004' , 'P005' , 'P007' , 'P008' , 'P009' , 'P010' , 'P011' , 'P013' , 'P016' , 'P021' , 'P023' , 'P024' , 'P025' , 'P028' , 'P032' ]
@@ -99,9 +99,9 @@ if __name__ == '__main__':
                     #To ensure that there are no empty cells in the data uber-list , we delete the first 30 rows.
                     for i in range(TOPELIMINATION):
                         data.remove( data[0] )#We always remove the first element
-                    if DEBUG==0 and participant in CAT1:    print "Participant in CAT1 , " , participant
-                    if DEBUG==0 and participant in CAT2:    print "Participant in CAT2 , " , participant
-                    if DEBUG==0 and participant in CAT3:    print "Participant in CAT3 , " , participant
+                    if DEBUG==0 and participant in CAT1:    print "\n\n\nParticipant in CAT1 , " , participant
+                    if DEBUG==0 and participant in CAT2:    print "\n\n\nParticipant in CAT2 , " , participant
+                    if DEBUG==0 and participant in CAT3:    print "\n\n\nParticipant in CAT3 , " , participant
                     #Now to make sure that the rows are properly divided
                     #re_data = []
                     # We are abandoning the process of compiling the data into a single array for each participant. It seems too large and almost always ends in the code crashing. Instead, we
@@ -124,46 +124,10 @@ if __name__ == '__main__':
                     DRIVE_WRITER = csv.writer(DRIVE_FILE)
                     PPG_WRITER = csv.writer(PPG_FILE)
                     #Writing the header rows
-                    GSR_WRITER.writerow(['TImestamp1' , 'TImestamp2' , 'Markers' , 'GSR( micro siemens )'])
-                    HR_WRITER.writerow(['TImestamp1' , 'TImestamp2' , 'Markers' , 'ECG1' , 'ECG2' , 'ECG3' , 'ECG4'])
-                    DRIVE_WRITER.writerow(['TImestamp1' , 'TImestamp2' , 'Markers' , 'Brake' , 'Speed' , 'Steer' , 'Throttle'])
-                    PPG_WRITER.writerow(['TImestamp1' , 'TImestamp2' , 'Markers' , 'PPG Heart Rate'])
-                    for row in data:
-                        #Order of data :
-                        #GSR FILE : < Timestamp 1 , TImestamp 2 , Markers, GSR >
-                        #DRIVE FILE :  < Timestamp 1 , TImestamp 2 , Markers , Brake , Speed , Steer , Throttle >
-                        #PPG FILE : <Timestamp 1 , Timestamp 2 , Markers , PPG , IBI(msecs)>
-                        ########
-                        #ECG File written after the if elif block
-                        #ECG FILE < Timestamp 1 , TImestamp 2 , Markers , ECG(1-4) >
-                        ########
-                        #Writing the GSR File
-                        GSR_WRITER.writerow([ float(row[0].split('\t')[9].split('_')[1]) , float(row[0].split('\t')[19]) , float(row[0].split('\t')[14]) , float(row[0].split('\t')[29]) ])
-                        ########
-                        #Writing the DRIVE File
-                        DRIVE_WRITER.writerow([ float(row[0].split('\t')[9].split('_')[1]) , float(row[0].split('\t')[19]) , float(row[0].split('\t')[14]) ,  float(row[0].split('\t')[13]) , float(row[0].split('\t')[15]) , float(row[0].split('\t')[16]) , float(row[0].split('\t')[17]) ])
-                        ########
-                        #Writing the PPG File
-                        GSR_WRITER.writerow([ float(row[0].split('\t')[9].split('_')[1]) , float(row[0].split('\t')[19]) , float(row[0].split('\t')[14]) , float(row[0].split('\t')[27]) , float(row[0].split('\t')[28]) ])
-                        ########
-                        if participant in CAT1:
-                            HR_WRITER.writerow([ float(row[0].split('\t')[9].split('_')[1]) , float(row[0].split('\t')[19]) , float(row[0].split('\t')[14]) , float(row[0].split('\t')[44]) , float(row[0].split('\t')[45]) , float(row[0].split('\t')[46]) , float(row[0].split('\t')[47]) ])
-                            #re_data.append( [ row[0].split('\t')[9] , row[0].split('\t')[19] , row[0].split('\t')[14] , row[0].split('\t')[44] , row[0].split('\t')[45] , row[0].split('\t')[46] , row[0].split('\t')[47] , row[0].split('\t')[13] \
-                            #, row[0].split('\t')[15] , row[0].split('\t')[16] , row[0].split('\t')[17] , row[0].split('\t')[27] , row[0].split('\t')[28] , row[0].split('\t')[29] ] )
-                        elif participant in CAT2:
-                            HR_WRITER.writerow([ float(row[0].split('\t')[9].split('_')[1]) , float(row[0].split('\t')[19]) , float(row[0].split('\t')[14]) , float(row[0].split('\t')[36]) , float(row[0].split('\t')[37]) , float(row[0].split('\t')[38]) , float(row[0].split('\t')[39]) ])
-                            #re_data.append( [ row[0].split('\t')[9] , row[0].split('\t')[19] , row[0].split('\t')[14] , row[0].split('\t')[36] , row[0].split('\t')[37] , row[0].split('\t')[38] , row[0].split('\t')[39] , row[0].split('\t')[13] \
-                            #, row[0].split('\t')[15] , row[0].split('\t')[16] , row[0].split('\t')[17] , row[0].split('\t')[27] , row[0].split('\t')[28] , row[0].split('\t')[29] ] )
-                        elif participant in CAT3:
-                            HR_WRITER.writerow([ float(row[0].split('\t')[9].split('_')[1]) , float(row[0].split('\t')[19]) , float(row[0].split('\t')[14]) , float(row[0].split('\t')[31]) , float(row[0].split('\t')[32]) , float(row[0].split('\t')[33]) , float(row[0].split('\t')[34]) ])
-                            #re_data.append( [ row[0].split('\t')[9] , row[0].split('\t')[19] , row[0].split('\t')[14] , row[0].split('\t')[31] , row[0].split('\t')[32] , row[0].split('\t')[33] , row[0].split('\t')[34] , row[0].split('\t')[13] \
-                            #, row[0].split('\t')[15] , row[0].split('\t')[16] , row[0].split('\t')[17] , row[0].split('\t')[27] , row[0].split('\t')[28] , row[0].split('\t')[29] ] )
-                    ########
-                    #Closing the files
-                    GSR_FILE.close()
-                    HR_FILE.close()
-                    DRIVE_FILE.close()
-                    PPG_FILE.close()
+                    GSR_WRITER.writerow(['Timestamp1' , 'Timestamp2' , 'AbsoluteTime' , 'Markers' , 'GSR'])
+                    HR_WRITER.writerow(['Timestamp1' , 'Timestamp2' , 'AbsoluteTime' , 'Markers' , 'ECG1' , 'ECG2' , 'ECG3' , 'ECG4'])
+                    DRIVE_WRITER.writerow(['Timestamp1' , 'Timestamp2' , 'AbsoluteTime' , 'Markers' , 'Brake' , 'Speed' , 'Steer' , 'Throttle'])
+                    PPG_WRITER.writerow(['Timestamp1' , 'Timestamp2' , 'AbsoluteTime' , 'Markers' , 'PPG' , 'IBI'])
                     # Files are all written and we plot from them instead of loading and keeping all of the data
                     # Now plotting the data, we try to use the functions in the PlottingFunctions.py to make the plots.
                     # Steps :
@@ -176,8 +140,72 @@ if __name__ == '__main__':
                     convertedtime = [ (convertedtime[i] - convertedtime[0]) for i in range(len(convertedtime)) ]
                     # The markers plot with the time from the iMotions UTC timestamp
                     Plot2Data( convertedtime , markers , 'iMotions Marker' , 'Plot of Markers in Participant '+participant  , 'MarkerPlot.pdf' , LOGFILE , participant , folderpath )
+                    # I am making a plot of the time from the iMotions and the second source of time stamps. This way we know that the times match and that our times are accurate.
+                    iMotionsTimeStamp = [ float(row[0].split('\t')[19]) for row in data ]
+                    iMotionsTimeStamp = [ (iMotionsTimeStamp[i] - iMotionsTimeStamp[0])/1000 for i in range(len(iMotionsTimeStamp)) ]
+                    Plot2Data( convertedtime, iMotionsTimeStamp , 'Time Stamp Comparison' , 'Plot of Time Stamps in iMotions for '+participant , 'TimeComparison.pdf' , LOGFILE , participant , folderpath )
+                    ##########
+                    # NOTE : I tested the imotions time stamp and the time stamps from the Shimmer devices. For most of the participants , the two data streams are fine. But for a couple of participants
+                    # the Shimmer time stamp has a jump in the data stamp. For this reason, we have the iMotions time stamps are put in the data over the Shimmer device time stamps
+                    for i,row in enumerate(data):
+                        #Order of data :
+                        #GSR FILE : < Timestamp 1 , TImestamp 2 , Markers, GSR >
+                        #DRIVE FILE :  < Timestamp 1 , TImestamp 2 , Markers , Brake , Speed , Steer , Throttle >
+                        #PPG FILE : <Timestamp 1 , Timestamp 2 , Markers , PPG , IBI(msecs)>
+                        ########
+                        #ECG File written after the if elif block
+                        #ECG FILE < Timestamp 1 , TImestamp 2 , Markers , ECG(1-4) >
+                        ########
+                        #Writing the GSR File
+                        GSR_WRITER.writerow([ float(row[0].split('\t')[9].split('_')[1]) , float(row[0].split('\t')[19]) , convertedtime[i] , float(row[0].split('\t')[14]) , float(row[0].split('\t')[29]) ])
+                        ########
+                        #Writing the DRIVE File
+                        DRIVE_WRITER.writerow([ float(row[0].split('\t')[9].split('_')[1]) , float(row[0].split('\t')[19]) , convertedtime[i] , float(row[0].split('\t')[14]) ,  float(row[0].split('\t')[13]) , float(row[0].split('\t')[15]) , float(row[0].split('\t')[16]) , float(row[0].split('\t')[17]) ])
+                        ########
+                        #Writing the PPG File
+                        PPG_WRITER.writerow([ float(row[0].split('\t')[9].split('_')[1]) , float(row[0].split('\t')[19]) , convertedtime[i] , float(row[0].split('\t')[14]) , float(row[0].split('\t')[27]) , float(row[0].split('\t')[28]) ])
+                        ########
+                        if participant in CAT1:
+                            HR_WRITER.writerow([ float(row[0].split('\t')[9].split('_')[1]) , float(row[0].split('\t')[19]) , convertedtime[i] , float(row[0].split('\t')[14]) , float(row[0].split('\t')[44]) , float(row[0].split('\t')[45]) , float(row[0].split('\t')[46]) , float(row[0].split('\t')[47]) ])
+                            #re_data.append( [ row[0].split('\t')[9] , row[0].split('\t')[19] , row[0].split('\t')[14] , row[0].split('\t')[44] , row[0].split('\t')[45] , row[0].split('\t')[46] , row[0].split('\t')[47] , row[0].split('\t')[13] \
+                            #, row[0].split('\t')[15] , row[0].split('\t')[16] , row[0].split('\t')[17] , row[0].split('\t')[27] , row[0].split('\t')[28] , row[0].split('\t')[29] ] )
+                        elif participant in CAT2:
+                            HR_WRITER.writerow([ float(row[0].split('\t')[9].split('_')[1]) , float(row[0].split('\t')[19]) , convertedtime[i] , float(row[0].split('\t')[14]) , float(row[0].split('\t')[36]) , float(row[0].split('\t')[37]) , float(row[0].split('\t')[38]) , float(row[0].split('\t')[39]) ])
+                            #re_data.append( [ row[0].split('\t')[9] , row[0].split('\t')[19] , row[0].split('\t')[14] , row[0].split('\t')[36] , row[0].split('\t')[37] , row[0].split('\t')[38] , row[0].split('\t')[39] , row[0].split('\t')[13] \
+                            #, row[0].split('\t')[15] , row[0].split('\t')[16] , row[0].split('\t')[17] , row[0].split('\t')[27] , row[0].split('\t')[28] , row[0].split('\t')[29] ] )
+                        elif participant in CAT3:
+                            HR_WRITER.writerow([ float(row[0].split('\t')[9].split('_')[1]) , float(row[0].split('\t')[19]) , convertedtime[i] , float(row[0].split('\t')[14]) , float(row[0].split('\t')[31]) , float(row[0].split('\t')[32]) , float(row[0].split('\t')[33]) , float(row[0].split('\t')[34]) ])
+                            #re_data.append( [ row[0].split('\t')[9] , row[0].split('\t')[19] , row[0].split('\t')[14] , row[0].split('\t')[31] , row[0].split('\t')[32] , row[0].split('\t')[33] , row[0].split('\t')[34] , row[0].split('\t')[13] \
+                            #, row[0].split('\t')[15] , row[0].split('\t')[16] , row[0].split('\t')[17] , row[0].split('\t')[27] , row[0].split('\t')[28] , row[0].split('\t')[29] ] )
+                    ########
+                    #Closing the files
+                    GSR_FILE.close()
+                    HR_FILE.close()
+                    DRIVE_FILE.close()
+                    PPG_FILE.close()
+                    ##################################################################################################################################################
+                    ##################################################################################################################################################
+                    # End of the RAW FILE READ if block
+                    #Reading and plotting data :
+                    filelist = [GSR_FILE_NAME, HR_FILE_NAME, DRIVE_FILE_NAME, PPG_FILE_NAME]
+                    for item in filelist:
+                        file = open(item, 'r')
+                        reader = csv.reader(file)
+                        headerrow = next(reader)
+                        data_ = list(reader)
+                        if DEBUG == 0:  print "\n Header row: " , headerrow
+                        data = list(reader)
+                        if DEBUG == 0:  print "\n First Row of Data: ", data_[0]
+                        length = len(data_[0])# This is the length of the arrays in data_
+                        length = length - 3# We discount the first three columns since they are timestamps
+                        t = [ float(data_[i][2]) for i in range(len(data_)) ]
+                        for k in range(length):#k is the index for the columns.
+                            signal = [ float(data_[i][3+k]) for i in range(len(data_)) ]# columns 3 to the end of (3+k) are read here. We use the titles we read from the
+                            signalname = headerrow[3+k]
+                            Plot2Data( t , signal , signalname , 'Plot of '+signalname , signalname+'.pdf' , LOGFILE , participant , folderpath )
                 #########################################
-                #From this point on , we are going to re-read the data in the separated files rather than use the data uber array every single time
+                #From this point on, we are going to re-read the data in the separated files rather than use the data uber array every single time
+                # We can do the plot iteratively using the an array of all the files and the plotting functions
             except Exception as e:
                 print " Exception recorded for participant : ", participant
                 print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
