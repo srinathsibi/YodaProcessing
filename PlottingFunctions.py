@@ -30,7 +30,7 @@ def Plot2Data( x_data , y_data , ylabel, plottitle, savename, LOGFILE, participa
         fig = plt.figure()
         fig.tight_layout()
         plt.title(plottitle)
-        plt.plot(x_data, y_data, 'r-', label = ylabel )
+        plt.plot(x_data, y_data, 'r-', label = ylabel , linewidth = 0.1)
         if DEBUG == 1:
             print "First few elements of the x and y data are : ", x_data[0:3] ,'\n', y_data[0:3]
         plt.xlabel(xlabel)
@@ -52,7 +52,7 @@ def Plot3Data(x_data , y_data , z_data , ylabel , zlabel , plottitle , savename,
         fig = plt.figure()
         fig.tight_layout()
         plt.title(plottitle)
-        plt.plot(x_data, y_data, 'r-', label = ylabel)
+        plt.plot(x_data, y_data, 'r-', label = ylabel , linewidth = 0.1)
         plt.plot(x_data, z_data, 'g--', label = zlabel)
         if DEBUG == 1:
             print "First few elements of the x,y and z data are : ", x_data[0:3] ,'\n', y_data[0:3] , '\n', z_data[0:3]
