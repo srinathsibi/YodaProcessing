@@ -34,7 +34,7 @@ LOGFILE = os.path.abspath('.') + '/CurrentOutputFile.csv'#Using one output file 
 MAINPATH = os.path.abspath('.')#Always specify absolute path for all path specification and file specifications
 DEBUG = 0# To print statements for debugging
 TOPELIMINATION = 50
-READRAWFILE = 1# This is the flag to make sure that files are read from the start
+READANDEXTRACTINDIVIDUALFILES = 0# This is the flag to make sure that files are read from the start
 #The 3 categories are defined here. Check here before adding the
 #We use this function as a key to sorting the list of folders (participants).
 CAT1 = [ 'P002', 'P004' , 'P005' , 'P007' , 'P008' , 'P009' , 'P010' , 'P011' , 'P013' , 'P016' , 'P021' , 'P023' , 'P024' , 'P025' , 'P028' , 'P032' ]
@@ -72,8 +72,14 @@ if __name__ == '__main__':
             #path to the contents of the folder.
             folderpath = MAINPATH+'/Data/'+participant+'/'
             #opening the iMotions File in each folder
+            MAINPATH+'/Data/'+participant+'/PPG.csv'#Output File Names for witing the relevant data
+            GSR_FILE_NAME = MAINPATH+'/Data/'+participant+'/GSR.csv'
+            HR_FILE_NAME = MAINPATH+'/Data/'+participant+'/HR.csv'
+            DRIVE_FILE_NAME = MAINPATH+'/Data/'+participant+'/DRIVE.csv'
+            PPG_FILE_NAME = MAINPATH+'/Data/'+participant+'/PPG.csv'
+            MARKER_FILE_NAME = MAINPATH+'/Data/'+participant+'/MARKERS.csv'
             try:
-                if READRAWFILE == 1:
+                if READANDEXTRACTINDIVIDUALFILES == 1:
                     file = open(folderpath+ participant + '.txt','r')
                     reader = csv.reader(file)
                     #print "First and Second lines in file: " , next(reader)
@@ -108,11 +114,6 @@ if __name__ == '__main__':
                     # are going to write the data as it is being read from the file into respective, GSR, HR, Drive and PPG data files. This would be better since we don't have to store the variables in a uber-large
                     # array.
                     #First we make the files
-                    #File Names
-                    GSR_FILE_NAME = MAINPATH+'/Data/'+participant+'/GSR.csv'
-                    HR_FILE_NAME = MAINPATH+'/Data/'+participant+'/HR.csv'
-                    DRIVE_FILE_NAME = MAINPATH+'/Data/'+participant+'/DRIVE.csv'
-                    PPG_FILE_NAME = MAINPATH+'/Data/'+participant+'/PPG.csv'
                     #open the files
                     GSR_FILE = open(GSR_FILE_NAME, 'wb')
                     HR_FILE = open(HR_FILE_NAME, 'wb')
@@ -183,29 +184,46 @@ if __name__ == '__main__':
                     HR_FILE.close()
                     DRIVE_FILE.close()
                     PPG_FILE.close()
-                    ##################################################################################################################################################
-                    ##################################################################################################################################################
-                    # End of the RAW FILE READ if block
-                    #Reading and plotting data :
-                    filelist = [GSR_FILE_NAME, HR_FILE_NAME, DRIVE_FILE_NAME, PPG_FILE_NAME]
-                    for item in filelist:
-                        file = open(item, 'r')
-                        reader = csv.reader(file)
-                        headerrow = next(reader)
-                        data_ = list(reader)
-                        if DEBUG == 0:  print "\n Header row: " , headerrow
-                        data = list(reader)
-                        if DEBUG == 0:  print "\n First Row of Data: ", data_[0]
-                        length = len(data_[0])# This is the length of the arrays in data_
-                        length = length - 3# We discount the first three columns since they are timestamps
-                        t = [ float(data_[i][2]) for i in range(len(data_)) ]
-                        for k in range(length):#k is the index for the columns.
-                            signal = [ float(data_[i][3+k]) for i in range(len(data_)) ]# columns 3 to the end of (3+k) are read here. We use the titles we read from the
-                            signalname = headerrow[3+k]
-                            Plot2Data( t , signal , signalname , 'Plot of '+signalname , signalname+'.pdf' , LOGFILE , participant , folderpath )
-                #########################################
+                ##################################################################################################################################################
+                ##################################################################################################################################################
+                # End of the RAW FILE READ if block
                 #From this point on, we are going to re-read the data in the separated files rather than use the data uber array every single time
                 # We can do the plot iteratively using the an array of all the files and the plotting functions
+                #Reading and plotting data :
+                filelist = [GSR_FILE_NAME, HR_FILE_NAME, DRIVE_FILE_NAME, PPG_FILE_NAME]
+                for item in filelist:
+                    file = open(item, 'r')
+                    reader = csv.reader(file)
+                    headerrow = next(reader)
+                    data_ = list(reader)
+                    if DEBUG == 1:  print "\n Header row: " , headerrow
+                    data = list(reader)
+                    if DEBUG == 1:  print "\n First Row of Data: ", data_[0]
+                    length = len(data_[0])# This is the length of the arrays in data_
+                    length = length - 3# We discount the first three columns since they are timestamps
+                    t = [ float(data_[i][2]) for i in range(len(data_)) ]
+                    for k in range(length):#k is the index for the columns.
+                        signal = [ float(data_[i][3+k]) for i in range(len(data_)) ]# columns 3 to the end of (3+k) are read here. We use the titles we read from the
+                        signalname = headerrow[3+k]
+                        Plot2Data( t , signal , signalname , 'Plot of '+signalname , signalname+'.pdf' , LOGFILE , participant , folderpath )
+                ##################
+                # Writing the marker function to reprocess the markers for all the participants.
+                # We need to write the function so that the values set to other than 10 and 14 are eliminated or made into 2 columns storing just ones indicating all the events.
+                # After this we need to create a dictionary of which 'ones' matter for which participants. Should be a table of sorts that needs to be made.
+                file = filelist[1]#Using the HR file name
+                reader = csv.reader(file, 'r')
+                headerrow = next(reader)
+                #load Markers
+                markers = [ float(row[i][3]) for row in reader ]
+                time = [floar(row[i][2]) for row in reader ]
+                file.close()
+                # I want to save just the markers file for further use and analysis to state which changes in markers values are actually the markers and which ones are not.
+                file = open(MARKER_FILE_NAME, 'wb')
+                writer = csv.writer(file)
+                writer.writerow('AbsoluteTime' , 'Markers')
+                for i in range(len(time)):
+                    writer.writerow(time[i] , markers[i])
+                if DEBUG ==0:   print "\nMarker File Written for participant: ", participant
             except Exception as e:
                 print " Exception recorded for participant : ", participant
                 print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)

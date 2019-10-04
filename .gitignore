@@ -1,3 +1,4 @@
 Data/
 AuxillaryInformation/
 *.pyc
+CurrentOutputFile.csv
