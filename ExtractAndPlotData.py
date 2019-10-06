@@ -35,6 +35,7 @@ MAINPATH = os.path.abspath('.')#Always specify absolute path for all path specif
 DEBUG = 0# To print statements for debugging
 TOPELIMINATION = 50
 READANDEXTRACTINDIVIDUALFILES = 0# This is the flag to make sure that files are read from the start
+MAKEPLOTS = 0;
 #The 3 categories are defined here. Check here before adding the
 #We use this function as a key to sorting the list of folders (participants).
 CAT1 = [ 'P002', 'P004' , 'P005' , 'P007' , 'P008' , 'P009' , 'P010' , 'P011' , 'P013' , 'P016' , 'P021' , 'P023' , 'P024' , 'P025' , 'P028' , 'P032' ]
@@ -189,24 +190,25 @@ if __name__ == '__main__':
                 # End of the RAW FILE READ if block
                 #From this point on, we are going to re-read the data in the separated files rather than use the data uber array every single time
                 # We can do the plot iteratively using the an array of all the files and the plotting functions
-                #Reading and plotting data :
-                filelist = [GSR_FILE_NAME, HR_FILE_NAME, DRIVE_FILE_NAME, PPG_FILE_NAME]
-                for item in filelist:
-                    file = open(item, 'r')
-                    reader = csv.reader(file)
-                    headerrow = next(reader)
-                    data_ = list(reader)
-                    if DEBUG == 1:  print "\n Header row: " , headerrow
-                    data = list(reader)
-                    if DEBUG == 1:  print "\n First Row of Data: ", data_[0]
-                    length = len(data_[0])# This is the length of the arrays in data_
-                    length = length - 3# We discount the first three columns since they are timestamps
-                    t = [ float(data_[i][2]) for i in range(len(data_)) ]
-                    for k in range(length):#k is the index for the columns.
-                        signal = [ float(data_[i][3+k]) for i in range(len(data_)) ]# columns 3 to the end of (3+k) are read here. We use the titles we read from the
-                        signalname = headerrow[3+k]
-                        Plot2Data( t , signal , signalname , 'Plot of '+signalname , signalname+'.pdf' , LOGFILE , participant , folderpath )
-                ##################
+                if MAKEPLOTS == 1:
+                    #Reading and plotting data :
+                    filelist = [GSR_FILE_NAME, HR_FILE_NAME, DRIVE_FILE_NAME, PPG_FILE_NAME]
+                    for item in filelist:
+                        file = open(item, 'r')
+                        reader = csv.reader(file)
+                        headerrow = next(reader)
+                        data_ = list(reader)
+                        if DEBUG == 1:  print "\n Header row: " , headerrow
+                        data = list(reader)
+                        if DEBUG == 1:  print "\n First Row of Data: ", data_[0]
+                        length = len(data_[0])# This is the length of the arrays in data_
+                        length = length - 3# We discount the first three columns since they are timestamps
+                        t = [ float(data_[i][2]) for i in range(len(data_)) ]
+                        for k in range(length):#k is the index for the columns.
+                            signal = [ float(data_[i][3+k]) for i in range(len(data_)) ]# columns 3 to the end of (3+k) are read here. We use the titles we read from the
+                            signalname = headerrow[3+k]
+                            Plot2Data( t , signal , signalname , 'Plot of '+signalname , signalname+'.pdf' , LOGFILE , participant , folderpath )
+                #####################
                 # Writing the marker function to reprocess the markers for all the participants.
                 # We need to write the function so that the values set to other than 10 and 14 are eliminated or made into 2 columns storing just ones indicating all the events.
                 # After this we need to create a dictionary of which 'ones' matter for which participants. Should be a table of sorts that needs to be made.
@@ -232,9 +234,20 @@ if __name__ == '__main__':
                 writer.writerow(['AbsoluteTime' , 'Markers' , 'Changes in Markers'])
                 for i in range(len(time)):
                     writer.writerow([ time[i] , markers[i] , changesinmarkers[i] ])
+                file.close()
                 # I am going to write a new file with the following information:
                 # < Abs Time , Count , Event , Marker Start , Marker End >
-                
+                MARKER_FILE_SHORT_NAME = MAINPATH+'/Data/'+participant+'/MARKERS_SHORT.csv'
+                file = open(MARKER_FILE_SHORT_NAME,'wb')
+                writer = csv.writer(file)
+                writer.writerow([' Abridged file for Markers '])
+                writer.writerow(['AbsoluteTime', 'Count' , 'Marker Old' , 'Marker New' , 'Event'])
+                sum = 0
+                for i in range(len(changesinmarkers)):
+                    if changesinmarkers[i] == 1:
+                        sum = sum+1
+                        writer.writerow([time[i] , sum , markers[i] , markers[i-1] , ' '])
+                file.close()
                 if DEBUG ==0:   print "\nMarker File Written for participant: ", participant
             except Exception as e:
                 print " Exception recorded for participant : ", participant, "Error is : ", e
