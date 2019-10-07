@@ -35,7 +35,8 @@ MAINPATH = os.path.abspath('.')#Always specify absolute path for all path specif
 DEBUG = 0# To print statements for debugging
 TOPELIMINATION = 50
 READANDEXTRACTINDIVIDUALFILES = 0# This is the flag to make sure that files are read from the start
-MAKEPLOTS = 0;
+MAKEPLOTS = 0#Make the individual plots from the files of all the data streams
+PROCESSMARKERS = 1#Analyze the markers and make abridged version of the markers file for event processing
 #The 3 categories are defined here. Check here before adding the
 #We use this function as a key to sorting the list of folders (participants).
 CAT1 = [ 'P002', 'P004' , 'P005' , 'P007' , 'P008' , 'P009' , 'P010' , 'P011' , 'P013' , 'P016' , 'P021' , 'P023' , 'P024' , 'P025' , 'P028' , 'P032' ]
@@ -209,46 +210,47 @@ if __name__ == '__main__':
                             signalname = headerrow[3+k]
                             Plot2Data( t , signal , signalname , 'Plot of '+signalname , signalname+'.pdf' , LOGFILE , participant , folderpath )
                 #####################
-                # Writing the marker function to reprocess the markers for all the participants.
-                # We need to write the function so that the values set to other than 10 and 14 are eliminated or made into 2 columns storing just ones indicating all the events.
-                # After this we need to create a dictionary of which 'ones' matter for which participants. Should be a table of sorts that needs to be made.
-                file = open(HR_FILE_NAME, 'r')#Using the HR file name
-                reader = csv.reader(file)
-                headerrow = next(reader)
-                #load Markers
-                data_ = list(reader)
-                markers = [ float(row[3]) for row in data_ ]
-                time = [ float(row[2]) for row in data_ ]
-                if DEBUG==1:    print "Time and Markers: ", time[1:10], markers[1:10]
-                file.close()
-                # I am going to rewrite the marker file with a third column of where the markers chage values
-                # We are also writing a second file with a list of just the points at which the marker changes values combined with the purpose of change in value as best understood
-                # Analyzing the changes in the marker values
-                changesinmarkers = [0]*len(markers)
-                for i in range(len(markers)-1):
-                    if abs( markers[i+1]-markers[i] ) > 0:
-                        changesinmarkers[i+1] = 1
-                # Section to write the marker file
-                file = open(MARKER_FILE_NAME, 'wb')
-                writer = csv.writer(file)
-                writer.writerow(['AbsoluteTime' , 'Markers' , 'Changes in Markers'])
-                for i in range(len(time)):
-                    writer.writerow([ time[i] , markers[i] , changesinmarkers[i] ])
-                file.close()
-                # I am going to write a new file with the following information:
-                # < Abs Time , Count , Event , Marker Start , Marker End >
-                MARKER_FILE_SHORT_NAME = MAINPATH+'/Data/'+participant+'/MARKERS_SHORT.csv'
-                file = open(MARKER_FILE_SHORT_NAME,'wb')
-                writer = csv.writer(file)
-                writer.writerow([' Abridged file for Markers '])
-                writer.writerow(['AbsoluteTime', 'Count' , 'Marker Old' , 'Marker New' , 'Event'])
-                sum = 0
-                for i in range(len(changesinmarkers)):
-                    if changesinmarkers[i] == 1:
-                        sum = sum+1
-                        writer.writerow([time[i] , sum , markers[i] , markers[i-1] , ' '])
-                file.close()
-                if DEBUG ==0:   print "\nMarker File Written for participant: ", participant
+                if PROCESSMARKERS == 1:
+                    # Writing the marker function to reprocess the markers for all the participants.
+                    # We need to write the function so that the values set to other than 10 and 14 are eliminated or made into 2 columns storing just ones indicating all the events.
+                    # After this we need to create a dictionary of which 'ones' matter for which participants. Should be a table of sorts that needs to be made.
+                    file = open(HR_FILE_NAME, 'r')#Using the HR file name
+                    reader = csv.reader(file)
+                    headerrow = next(reader)
+                    #load Markers
+                    data_ = list(reader)
+                    markers = [ float(row[3]) for row in data_ ]
+                    time = [ float(row[2]) for row in data_ ]
+                    if DEBUG==1:    print "Time and Markers: ", time[1:10], markers[1:10]
+                    file.close()
+                    # I am going to rewrite the marker file with a third column of where the markers chage values
+                    # We are also writing a second file with a list of just the points at which the marker changes values combined with the purpose of change in value as best understood
+                    # Analyzing the changes in the marker values
+                    changesinmarkers = [0]*len(markers)
+                    for i in range(len(markers)-1):
+                        if abs( markers[i+1]-markers[i] ) > 0:
+                            changesinmarkers[i+1] = 1
+                    # Section to write the marker file
+                    file = open(MARKER_FILE_NAME, 'wb')
+                    writer = csv.writer(file)
+                    writer.writerow(['AbsoluteTime' , 'Markers' , 'Changes in Markers'])
+                    for i in range(len(time)):
+                        writer.writerow([ time[i] , markers[i] , changesinmarkers[i] ])
+                    file.close()
+                    # I am going to write a new file with the following information:
+                    # < Abs Time , Count , Event , Marker Start , Marker End >
+                    MARKER_FILE_SHORT_NAME = MAINPATH+'/Data/'+participant+'/MARKERS_SHORT.csv'
+                    file = open(MARKER_FILE_SHORT_NAME,'wb')
+                    writer = csv.writer(file)
+                    writer.writerow([' Abridged file for Markers '])
+                    writer.writerow(['AbsoluteTime', 'Count' , 'Marker Old' , 'Marker New' , 'Event'])
+                    sum = 0
+                    for i in range(len(changesinmarkers)):
+                        if changesinmarkers[i] == 1:
+                            sum = sum+1
+                            writer.writerow([time[i] , sum , markers[i] , markers[i-1] , ' '])
+                    file.close()
+                    if DEBUG ==0:   print "\nMarker File Written for participant: ", participant
             except Exception as e:
                 print " Exception recorded for participant : ", participant, "Error is : ", e
                 print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
