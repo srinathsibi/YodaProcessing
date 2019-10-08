@@ -30,21 +30,28 @@ import numpy as np
 import pandas as pd
 from statistics import mean
 from PlottingFunctions import *
+from biosppy import storage
+from biosppy.signals import ecg
 LOGFILE = os.path.abspath('.') + '/CurrentOutputFile.csv'#Using one output file for all the scripts from now to avoid flooding the working folder
 MAINPATH = os.path.abspath('.')#Always specify absolute path for all path specification and file specifications
 DEBUG = 0# To print statements for debugging
 TOPELIMINATION = 50
 READANDEXTRACTINDIVIDUALFILES = 0# This is the flag to make sure that files are read from the start
 MAKEPLOTS = 0#Make the individual plots from the files of all the data streams
-PROCESSMARKERS = 1#Analyze the markers and make abridged version of the markers file for event processing
+PROCESSMARKERS = 0#Analyze the markers and make abridged version of the markers file for event processing
+HRPROCESSING = 1#This is to process the
 #The 3 categories are defined here. Check here before adding the
 #We use this function as a key to sorting the list of folders (participants).
 CAT1 = [ 'P002', 'P004' , 'P005' , 'P007' , 'P008' , 'P009' , 'P010' , 'P011' , 'P013' , 'P016' , 'P021' , 'P023' , 'P024' , 'P025' , 'P028' , 'P032' ]
 CAT2 = [ 'P022' , 'P037' , 'P040' , 'P042' , 'P045' , 'P046' , 'P047' , 'P055' , 'P057' , 'P058' , 'P060' , 'P064' , 'P066' , 'P067' , 'P069' , 'P071' , \
 'P076' , 'P077' , 'P085' , 'P086' , 'P087' , 'P088' , 'P089' , 'P090' , 'P090' , 'P093' , 'P094' , 'P095' , 'P096' , 'P097' ,'P098']
 CAT3 = ['P012']
+#Function to sort the participant folder based on the number
 def SortFunc(e):
     return int( re.sub('P','',e) )
+#Function to process the ECG data with the biosppy.
+def ProcessingHR(participant):
+    print " processing the HR data for " , participant
 #the time converter from iMotions data. Use the column Timestamp (col 10) from the iMotions file.
 def iMotionsTimeConverter(inputcode):
     decimal = float(inputcode%1000)/1000
@@ -251,6 +258,9 @@ if __name__ == '__main__':
                             writer.writerow([time[i] , sum , markers[i] , markers[i-1] , ' '])
                     file.close()
                     if DEBUG ==0:   print "\nMarker File Written for participant: ", participant
+                ####################################
+                ##### Starting the HR processing. This will be moved to after the markers are labelled in the marker abstract
+                if HRPROCESSING == 1 and participant=='P002':   ProcessingHR(participant)
             except Exception as e:
                 print " Exception recorded for participant : ", participant, "Error is : ", e
                 print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
