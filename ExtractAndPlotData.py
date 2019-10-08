@@ -30,7 +30,6 @@ import numpy as np
 import pandas as pd
 from statistics import mean
 from PlottingFunctions import *
-from biosppy import storage
 from biosppy.signals import ecg
 LOGFILE = os.path.abspath('.') + '/CurrentOutputFile.csv'#Using one output file for all the scripts from now to avoid flooding the working folder
 MAINPATH = os.path.abspath('.')#Always specify absolute path for all path specification and file specifications
@@ -52,6 +51,39 @@ def SortFunc(e):
 #Function to process the ECG data with the biosppy.
 def ProcessingHR(participant):
     print " processing the HR data for " , participant
+    try:
+        # we operate in the example folder in P002, but we no longer have to do this for later iters
+        # opening the file
+        file = open(MAINPATH+'/Data/'+participant+'/Example/HR.csv' , 'r')
+        reader = csv.reader(file)
+        header = next(reader)
+        data = list (reader)
+        file.close()
+        #We are going to set the limits to see if we can identify the peaks effectively with the algorithm for biosppy
+        time = [ float(row[2]) for row in data[100:20000] ]
+        ECG1 = [ float(row[4]) for row in data[101:20000] ]
+        ECG2 = [ float(row[5]) for row in data[100:20000] ]
+        ECG3 = [ float(row[6]) for row in data[100:20000] ]
+        ECG4 = [ float(row[7]) for row in data[100:20000] ]
+        # We need to calculate the average sample rate. For now we just use an average sample rate of 1000 Hz (~1024 Hz)
+        out = ecg.ecg(signal=ECG1, sampling_rate=1024 , show=False)
+        # Biosppy works really well in ECG processing, it takes the source of the ECG amd identifies the peaks and calculates the heart rates between the peaks.
+        # the output of the ecg.ecg function ( 'out' in this case), contains all the processes output of the ecg.ecg() .
+        # Output columns : ['ts', 'filtered', 'rpeaks', 'templates_ts', 'templates', 'heart_rate_ts', 'heart_rate']
+        # Output is a weird tuple||dict hybrid. Using the as_dict() function makes it a little better, though obviously the best thing to do is just convert to a list.
+        # Using out[-1] , out[-2] we can get the heart rate and the heart rate at which the time was recorded. Keep in mind the time is relative to the start of the interval used in the data subset
+        # and is NOT absolute time.
+        # Also the indices at which the r-peaks occur is given in the r-peaks interval, which is convenient for r-r interval calculation if needed
+        # NOTE : there are 'n+1' r-peaks for every 'n' sample points of heart rate calculated [ out[-1] , out[-2] have n columns, while out[2] has n+1 columns ].
+        print " The output of the biosppy processing: " , " Output as dict : " , out.as_dict() , "\n\n\n Output keys : " , out.keys()
+        #, '\n\n\n' , len(out[-1]) , '\n\n\n' , len(out[-2]) , 'r-peaks' , len(out[2])
+    except Exception as e:
+        print "HR Processing Exception Catcher for participant: " , participant , 'Exception recorded: ' , e
+        print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
+        file = open(LOGFILE,'a')
+        writer = csv.writer(file)
+        writer.writerow([' HR Processing Function Exception Caught for participant: ', participant , 'Exception recorded: ', e , 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno) ])
+        file.close()
 #the time converter from iMotions data. Use the column Timestamp (col 10) from the iMotions file.
 def iMotionsTimeConverter(inputcode):
     decimal = float(inputcode%1000)/1000
