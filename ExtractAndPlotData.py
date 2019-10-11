@@ -28,29 +28,34 @@ import math
 from scipy import interpolate
 import numpy as np
 import pandas as pd
+import shutil
 from statistics import mean
 from PlottingFunctions import *
-from biosppy.signals import ecg
+from biosppy.signals import ecg, eda
 LOGFILE = os.path.abspath('.') + '/CurrentOutputFile.csv'#Using one output file for all the scripts from now to avoid flooding the working folder
 MAINPATH = os.path.abspath('.')#Always specify absolute path for all path specification and file specifications
 DEBUG = 0# To print statements for debugging
-TOPELIMINATION = 50
+TOPELIMINATION = 100
 READANDEXTRACTINDIVIDUALFILES = 0# This is the flag to make sure that files are read from the start
 MAKEPLOTS = 0#Make the individual plots from the files of all the data streams
-PROCESSMARKERS = 0#Analyze the markers and make abridged version of the markers file for event processing
-HRPROCESSING = 1#This is to process the
+REMOVEFILE = 0# We are using this marker to remove a file with the same name across all participatns in similar locations.
+PROCESSMARKERS = 1#Analyze the markers and make abridged version of the markers file for event processing
+HRPROCESSING = 0#This is to process the HR Data only
+GSRPROCESSING = 0#This is to process the GSR Data only
+GROUPDATA = 0#This is to process the
 #The 3 categories are defined here. Check here before adding the
 #We use this function as a key to sorting the list of folders (participants).
 CAT1 = [ 'P002', 'P004' , 'P005' , 'P007' , 'P008' , 'P009' , 'P010' , 'P011' , 'P013' , 'P016' , 'P021' , 'P023' , 'P024' , 'P025' , 'P028' , 'P032' ]
 CAT2 = [ 'P022' , 'P037' , 'P040' , 'P042' , 'P045' , 'P046' , 'P047' , 'P055' , 'P057' , 'P058' , 'P060' , 'P064' , 'P066' , 'P067' , 'P069' , 'P071' , \
 'P076' , 'P077' , 'P085' , 'P086' , 'P087' , 'P088' , 'P089' , 'P090' , 'P090' , 'P093' , 'P094' , 'P095' , 'P096' , 'P097' ,'P098']
 CAT3 = ['P012']
+#Participants with
 #Function to sort the participant folder based on the number
 def SortFunc(e):
     return int( re.sub('P','',e) )
 #Function to process the ECG data with the biosppy.
 def ProcessingHR(participant):
-    print " processing the HR data for " , participant
+    print " Processing the HR data for : " , participant
     try:
         # we operate in the example folder in P002, but we no longer have to do this for later iters
         # opening the file
@@ -65,7 +70,7 @@ def ProcessingHR(participant):
         ECG2 = [ float(row[5]) for row in data[100:20000] ]
         ECG3 = [ float(row[6]) for row in data[100:20000] ]
         ECG4 = [ float(row[7]) for row in data[100:20000] ]
-        # We need to calculate the average sample rate. For now we just use an average sample rate of 1000 Hz (~1024 Hz)
+        # We need to calculate sampling rate as an average of the interval between all the time points. If the value is too far from the 1024 Hz, then we need to look at plots.
         out = ecg.ecg(signal=ECG1, sampling_rate=1024 , show=False)
         # Biosppy works really well in ECG processing, it takes the source of the ECG amd identifies the peaks and calculates the heart rates between the peaks.
         # the output of the ecg.ecg function ( 'out' in this case), contains all the processes output of the ecg.ecg() .
@@ -77,6 +82,34 @@ def ProcessingHR(participant):
         # NOTE : there are 'n+1' r-peaks for every 'n' sample points of heart rate calculated [ out[-1] , out[-2] have n columns, while out[2] has n+1 columns ].
         print " The output of the biosppy processing: " , " Output as dict : " , out.as_dict() , "\n\n\n Output keys : " , out.keys()
         #, '\n\n\n' , len(out[-1]) , '\n\n\n' , len(out[-2]) , 'r-peaks' , len(out[2])
+    except Exception as e:
+        print "HR Processing Exception Catcher for participant: " , participant , 'Exception recorded: ' , e
+        print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
+        file = open(LOGFILE,'a')
+        writer = csv.writer(file)
+        writer.writerow([' HR Processing Function Exception Caught for participant: ', participant , 'Exception recorded: ', e , 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno) ])
+        file.close()
+#Function to analyze the GSR data with biosppy eda function
+def ProcessingGSR(participant):
+    print " Processing the GSR data for : ", participant
+    try:
+        #Opening the GSR File. For now, we operate in the Example file for now
+        file = open(MAINPATH+'/Data/'+participant+'/Example/GSR.csv' , 'r')
+        reader = csv.reader(file)
+        header = next(reader)
+        data = list (reader)
+        file.close()
+        # Loading the data
+        time = [ float(row[2]) for row in data[100:50000] ]
+        gsr = [ float(row[4]) for row in data[100:50000] ]
+        # We need to calculate sampling rates here as well
+        out = eda.eda(signal=gsr , sampling_rate=1024 , show=True , min_amplitude=0.1)
+        print " The output for the GSR file is : " , out.as_dict() ,'\n\n\n' , out.keys()
+        # The output of the EDA function is similar to the output of the ecg function
+        # The lists included are:  ['ts', 'filtered', 'onsets', 'peaks', 'amplitudes']
+        # The filtered GSR is included in the 2 column and the onsets , peaks contains the index of the SCR onsets(index) and peak values (amplitude).
+        # The best way to analyze the data when we mark the data is to to identify the onset, time to the onset , and the peak amplitude
+        # It is in the same tuple form as the ecg output. But this can work to out ad
     except Exception as e:
         print "HR Processing Exception Catcher for participant: " , participant , 'Exception recorded: ' , e
         print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
@@ -107,8 +140,7 @@ if __name__ == '__main__':
         listoffolders = os.listdir(MAINPATH+'/Data/')
         #Sort the Folders
         listoffolders.sort(key=SortFunc)
-        if DEBUG == 1:
-            print "\nThe list of folder:", listoffolders
+        if DEBUG == 1:  print "\nThe list of folder:", listoffolders
         for participant in listoffolders:
             #path to the contents of the folder.
             folderpath = MAINPATH+'/Data/'+participant+'/'
@@ -247,7 +279,9 @@ if __name__ == '__main__':
                         for k in range(length):#k is the index for the columns.
                             signal = [ float(data_[i][3+k]) for i in range(len(data_)) ]# columns 3 to the end of (3+k) are read here. We use the titles we read from the
                             signalname = headerrow[3+k]
-                            Plot2Data( t , signal , signalname , 'Plot of '+signalname , signalname+'.pdf' , LOGFILE , participant , folderpath )
+                            #No need to plot the Markers again. They have already been plotted before
+                            #if signalname not in ['Markers']:
+                            Plot2Data( t , signal , signalname , 'Plot of '+signalname+' for participant '+participant , signalname+'.pdf' , LOGFILE , participant , folderpath )
                 #####################
                 if PROCESSMARKERS == 1:
                     # Writing the marker function to reprocess the markers for all the participants.
@@ -262,20 +296,30 @@ if __name__ == '__main__':
                     time = [ float(row[2]) for row in data_ ]
                     if DEBUG==1:    print "Time and Markers: ", time[1:10], markers[1:10]
                     file.close()
-                    # I am going to rewrite the marker file with a third column of where the markers chage values
+                    # Marker Noise elimination section:
+                    # Populate a second array for modification of values so that we can have both the original and changed arrays in the marker file
+                    markers_filtered = markers
+                    # Search the array for changes in markers for increases to 20 and set it to the previous value to eliminate the jumps in marker data
+                    for i in range(len(markers_filtered)):
+                        if markers_filtered[i] == 20:
+                            markers_filtered[i] = markers_filtered[i-1]
+                    # Second, We rewrite the marker file with a third column of where the markers chage values
                     # We are also writing a second file with a list of just the points at which the marker changes values combined with the purpose of change in value as best understood
                     # Analyzing the changes in the marker values
-                    changesinmarkers = [0]*len(markers)
-                    for i in range(len(markers)-1):
-                        if abs( markers[i+1]-markers[i] ) > 0:
+                    changesinmarkers = [0]*len(markers_filtered)
+                    for i in range(len(markers_filtered)-1):
+                        if abs( markers_filtered[i+1] - markers_filtered[i] ) > 0:
                             changesinmarkers[i+1] = 1
                     # Section to write the marker file
                     file = open(MARKER_FILE_NAME, 'wb')
                     writer = csv.writer(file)
-                    writer.writerow(['AbsoluteTime' , 'Markers' , 'Changes in Markers'])
+                    writer.writerow(['AbsoluteTime' , 'Markers', 'Filtered Markers' , 'Changes in Markers'])
                     for i in range(len(time)):
-                        writer.writerow([ time[i] , markers[i] , changesinmarkers[i] ])
+                        writer.writerow([ time[i] , markers[i] , markers_filtered[i] , changesinmarkers[i] ])
                     file.close()
+                    ###########
+                    #Plotting the Filtered Markers
+                    Plot2Data( time, markers_filtered , 'Filtered Markers' , 'Plot of Filtered Markers for participant '+participant , 'FilteredMarkers.pdf' , LOGFILE , participant , folderpath )
                     # I am going to write a new file with the following information:
                     # < Abs Time , Count , Event , Marker Start , Marker End >
                     MARKER_FILE_SHORT_NAME = MAINPATH+'/Data/'+participant+'/MARKERS_SHORT.csv'
@@ -287,12 +331,48 @@ if __name__ == '__main__':
                     for i in range(len(changesinmarkers)):
                         if changesinmarkers[i] == 1:
                             sum = sum+1
-                            writer.writerow([time[i] , sum , markers[i] , markers[i-1] , ' '])
+                            writer.writerow([time[i] , sum , markers_filtered[i-1] , markers_filtered[i] , ' '])
                     file.close()
                     if DEBUG ==0:   print "\nMarker File Written for participant: ", participant
+                ##################################################################################################
+                ##################################################################################################
+                ############# Signal Processing for raw HR, PPG, IBI and GSR signals ############################
+                # Process :
+                # 1) First we need to insert the segregation process before this segment.
+                # 2) Next we use the functions and structure below to process and analyze the data in each segment. Basically,
+                # run the script for each section in current participant
+                # 3) The ECG analysis (biosppy) will output the 2 streams of data - > HR , IBI and HRV
+                # 4) The GSR signal analysis (biosppy) will output [ onset time, peak amplitude ] . This should also help with identifying
+                # how many peaks are present.
+                # 5) The PPG signal analysis (to be done by hand) will give a measurement of heart rate and the IBI (inter-beat interval).
+                # These are two additional measures for the same physiological data. We store and compare them to the ECG outptut.
+                ##################################################################################################
+                ##################################################################################################
+                ##### Starting the HR processing.
+                # Individual data files can be analyzed if needed using the flags at the top of the file.
+                #
+                if HRPROCESSING == 1 and participant=='P002':   ProcessingHR(participant)# ADD SECTION
                 ####################################
-                ##### Starting the HR processing. This will be moved to after the markers are labelled in the marker abstract
-                if HRPROCESSING == 1 and participant=='P002':   ProcessingHR(participant)
+                if GSRPROCESSING == 1 and participant=='P002':   ProcessingGSR(participant)# ADD SECTION
+                ####################################
+                ###### Now moving on to the PPG and IBI data. There's no processing this using , we need to do this by hand.
+                ##################################################################################################
+                ##################################################################################################
+                if REMOVEFILE ==1:
+                    # We write a short section to remove previously written files that are present in all participant folder.
+                    DeleteList = ['TimeComparison.pdf' ,'Markers.pdf']
+                    for item in DeleteList:
+                        if os.path.exists(MAINPATH+'/Data/'+participant+'/'+item):
+                            os.remove(MAINPATH+'/Data/'+participant+'/'+item)
+                            if DEBUG ==1:   print "Deleted: " , item
+                ##################################################################################################
+                ##################################################################################################
+                if GROUPDATA == 1:
+                    grouplist = ['MarkerPlot.pdf']
+                    for item in grouplist:
+                        if os.path.exists(MAINPATH+'/Data/'+participant+'/'+item):
+                            shutil.move(MAINPATH+'/Data/'+participant+'/'+item , MAINPATH+'/AuxillaryInformation/MarkerPlotsforAllParticipants/' + participant+item)#Adding the participant name to the item name before
+                            if DEBUG ==0:   print "File moved ", item
             except Exception as e:
                 print " Exception recorded for participant : ", participant, "Error is : ", e
                 print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
