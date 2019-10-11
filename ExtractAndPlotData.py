@@ -284,20 +284,21 @@ if __name__ == '__main__':
                             Plot2Data( t , signal , signalname , 'Plot of '+signalname+' for participant '+participant , signalname+'.pdf' , LOGFILE , participant , folderpath )
                 #####################
                 if PROCESSMARKERS == 1:
-                    # Writing the marker function to reprocess the markers for all the participants.
-                    # We need to write the function so that the values set to other than 10 and 14 are eliminated or made into 2 columns storing just ones indicating all the events.
+                    # Writing the section to reprocess the markers for all the participants.
                     # After this we need to create a dictionary of which 'ones' matter for which participants. Should be a table of sorts that needs to be made.
+                    ###############
+                    #Load Markers from ECG file
                     file = open(HR_FILE_NAME, 'r')#Using the HR file name
                     reader = csv.reader(file)
                     headerrow = next(reader)
-                    #load Markers
                     data_ = list(reader)
                     markers = [ float(row[3]) for row in data_ ]
                     time = [ float(row[2]) for row in data_ ]
                     if DEBUG==1:    print "Time and Markers: ", time[1:10], markers[1:10]
                     file.close()
+                    #################
                     # Marker Noise elimination section:
-                    # Populate a second array for modification of values so that we can have both the original and changed arrays in the marker file
+                    # Populate a second array for modification of values separate from the markers array
                     markers_filtered = markers
                     # Search the array for changes in markers for increases to 20 and set it to the previous value to eliminate the jumps in marker data
                     for i in range(len(markers_filtered)):
@@ -320,13 +321,13 @@ if __name__ == '__main__':
                     ###########
                     #Plotting the Filtered Markers
                     Plot2Data( time, markers_filtered , 'Filtered Markers' , 'Plot of Filtered Markers for participant '+participant , 'FilteredMarkers.pdf' , LOGFILE , participant , folderpath )
-                    # I am going to write a new file with the following information:
-                    # < Abs Time , Count , Event , Marker Start , Marker End >
+                    ###########
+                    # I am going to write a new file with < Abs Time , Count , Event , Marker Start , Marker End >. This is the abridged key for processing the data 
                     MARKER_FILE_SHORT_NAME = MAINPATH+'/Data/'+participant+'/MARKERS_SHORT.csv'
                     file = open(MARKER_FILE_SHORT_NAME,'wb')
                     writer = csv.writer(file)
                     writer.writerow([' Abridged file for Markers '])
-                    writer.writerow(['AbsoluteTime', 'Count' , 'Marker Old' , 'Marker New' , 'Event'])
+                    writer.writerow(['AbsoluteTime', 'Count' , 'Filtered Marker Old' , 'Filtered Marker New' , 'Event'])
                     sum = 0
                     for i in range(len(changesinmarkers)):
                         if changesinmarkers[i] == 1:
