@@ -40,9 +40,10 @@ READANDEXTRACTINDIVIDUALFILES = 0# This is the flag to make sure that files are 
 MAKEPLOTS = 0#Make the individual plots from the files of all the data streams
 REMOVEFILE = 0# We are using this marker to remove a file with the same name across all participatns in similar locations.
 PROCESSMARKERS = 1#Analyze the markers and make abridged version of the markers file for event processing
+REWRITEABRIDGEDMARKERFILE = 0;#This Flag is to rewrite the marker file.
 HRPROCESSING = 0#This is to process the HR Data only
 GSRPROCESSING = 0#This is to process the GSR Data only
-GROUPDATA = 0#This is to process the
+BACKUPDATA = 1#This is to process the
 #The 3 categories are defined here. Check here before adding the
 #We use this function as a key to sorting the list of folders (participants).
 CAT1 = [ 'P002', 'P004' , 'P005' , 'P007' , 'P008' , 'P009' , 'P010' , 'P011' , 'P013' , 'P016' , 'P021' , 'P023' , 'P024' , 'P025' , 'P028' , 'P032' ]
@@ -142,6 +143,7 @@ if __name__ == '__main__':
         listoffolders.sort(key=SortFunc)
         if DEBUG == 1:  print "\nThe list of folder:", listoffolders
         for participant in listoffolders:
+            print "\n\nAnalyzing the data for participant: " , participant
             #path to the contents of the folder.
             folderpath = MAINPATH+'/Data/'+participant+'/'
             #opening the iMotions File in each folder
@@ -318,23 +320,25 @@ if __name__ == '__main__':
                     for i in range(len(time)):
                         writer.writerow([ time[i] , markers[i] , markers_filtered[i] , changesinmarkers[i] ])
                     file.close()
+                    if DEBUG ==1:   print "\nMarker File Written for participant: ", participant
                     ###########
                     #Plotting the Filtered Markers
                     Plot2Data( time, markers_filtered , 'Filtered Markers' , 'Plot of Filtered Markers for participant '+participant , 'FilteredMarkers.pdf' , LOGFILE , participant , folderpath )
                     ###########
-                    # I am going to write a new file with < Abs Time , Count , Event , Marker Start , Marker End >. This is the abridged key for processing the data 
-                    MARKER_FILE_SHORT_NAME = MAINPATH+'/Data/'+participant+'/MARKERS_SHORT.csv'
-                    file = open(MARKER_FILE_SHORT_NAME,'wb')
-                    writer = csv.writer(file)
-                    writer.writerow([' Abridged file for Markers '])
-                    writer.writerow(['AbsoluteTime', 'Count' , 'Filtered Marker Old' , 'Filtered Marker New' , 'Event'])
-                    sum = 0
-                    for i in range(len(changesinmarkers)):
-                        if changesinmarkers[i] == 1:
-                            sum = sum+1
-                            writer.writerow([time[i] , sum , markers_filtered[i-1] , markers_filtered[i] , ' '])
-                    file.close()
-                    if DEBUG ==0:   print "\nMarker File Written for participant: ", participant
+                    if REWRITEABRIDGEDMARKERFILE == 1:
+                        # I am going to write a new file with < Abs Time , Count , Event , Marker Start , Marker End >. This is the abridged key for processing the data
+                        MARKER_FILE_SHORT_NAME = MAINPATH+'/Data/'+participant+'/MARKERS_SHORT.csv'
+                        file = open(MARKER_FILE_SHORT_NAME,'wb')
+                        writer = csv.writer(file)
+                        writer.writerow([' Abridged file for Markers '])
+                        writer.writerow(['AbsoluteTime', 'Count' , 'Filtered Marker Old' , 'Filtered Marker New' , 'Event'])
+                        sum = 0
+                        for i in range(len(changesinmarkers)):
+                            if changesinmarkers[i] == 1:
+                                sum = sum+1
+                                writer.writerow([time[i] , sum , markers_filtered[i-1] , markers_filtered[i] , ' '])
+                        file.close()
+                        if DEBUG ==1:   print "\nAbridged Marker File Written for participant: ", participant
                 ##################################################################################################
                 ##################################################################################################
                 ############# Signal Processing for raw HR, PPG, IBI and GSR signals ############################
@@ -368,12 +372,12 @@ if __name__ == '__main__':
                             if DEBUG ==1:   print "Deleted: " , item
                 ##################################################################################################
                 ##################################################################################################
-                if GROUPDATA == 1:
-                    grouplist = ['MarkerPlot.pdf']
+                if BACKUPDATA == 1:
+                    grouplist = ['MarkerPlot.pdf' , 'FilteredMarkers.pdf' , 'MARKERS_SHORT.csv' ]
                     for item in grouplist:
                         if os.path.exists(MAINPATH+'/Data/'+participant+'/'+item):
-                            shutil.move(MAINPATH+'/Data/'+participant+'/'+item , MAINPATH+'/AuxillaryInformation/MarkerPlotsforAllParticipants/' + participant+item)#Adding the participant name to the item name before
-                            if DEBUG ==0:   print "File moved ", item
+                            shutil.copy(MAINPATH+'/Data/'+participant+'/'+item , MAINPATH+'/AuxillaryInformation/MarkerPlotsforAllParticipants/' + participant+item)#Adding the participant name to the item name before
+                            if DEBUG ==1:   print "File moved ", item
             except Exception as e:
                 print " Exception recorded for participant : ", participant, "Error is : ", e
                 print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
