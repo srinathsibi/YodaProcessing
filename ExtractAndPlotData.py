@@ -39,11 +39,12 @@ TOPELIMINATION = 100
 READANDEXTRACTINDIVIDUALFILES = 0# This is the flag to make sure that files are read from the start
 MAKEPLOTS = 0#Make the individual plots from the files of all the data streams
 REMOVEFILE = 0# We are using this marker to remove a file with the same name across all participatns in similar locations.
-PROCESSMARKERS = 1#Analyze the markers and make abridged version of the markers file for event processing
+PROCESSMARKERS = 0#Analyze the markers and make abridged version of the markers file for event processing
 REWRITEABRIDGEDMARKERFILE = 0;#This Flag is to rewrite the marker file.
 HRPROCESSING = 0#This is to process the HR Data only
 GSRPROCESSING = 0#This is to process the GSR Data only
-BACKUPDATA = 1#This is to process the
+BACKUPDATA = 0#This is to backup files that are important or are needed for later.
+SEGMENTDATA = 1#This is to cut the data into windows for all the data in the study.
 #The 3 categories are defined here. Check here before adding the
 #We use this function as a key to sorting the list of folders (participants).
 CAT1 = [ 'P002', 'P004' , 'P005' , 'P007' , 'P008' , 'P009' , 'P010' , 'P011' , 'P013' , 'P016' , 'P021' , 'P023' , 'P024' , 'P025' , 'P028' , 'P032' ]
@@ -341,21 +342,69 @@ if __name__ == '__main__':
                         if DEBUG ==1:   print "\nAbridged Marker File Written for participant: ", participant
                 ##################################################################################################
                 ##################################################################################################
+                if SEGMENTDATA ==1:
+                    try:
+                        ########### Segmentation Section ############
+                        # Markers have been processed.
+                        # We now start the Segmentation of the data around the events.
+                        # We open the Abridged events and read the times for each of the following events:
+                        # 1) GoAroundRocks
+                        # 2) CurvedRoads
+                        # 3) Failure1
+                        # 4) HighwayExit
+                        # 5) RightTurn1
+                        # 6) RightTurn2
+                        # 7) PedestrianEvent
+                        # 8) TurnRight3
+                        # 9) BicycleEvent
+                        # 10) TurnRight4
+                        # 11) TurnRight5
+                        # 12) RoadObstructionEvent
+                        # 13) HighwayEntryEvent
+                        # 14) HighwayIslandEvent
+                        # We read the MARKERS_SHORT.csv file and get the times for the event and save them in subfolders with the HR and GSR data
+                        print " Segmenting data for participant : ", participant
+                        #Open Abridged marker file :
+                        file = open(folderpath+'MARKERS_SHORT.csv' , 'r')
+                        reader = csv.reader(file)
+                        ignore = next(reader)
+                        data = list(reader)
+                        file.close()
+                        Events = [ 'GoAroundRocks' , 'CurvedRoads' , 'Failure1' , 'HighwayExit' , 'RightTurn1' , 'RightTurn2' , 'PedestrianEvent' , 'TurnRight3' , 'BicycleEvent' , 'TurnRight4' , 'TurnRight5'\
+                        , 'RoadObstructionEvent' , 'HighwayEntryEvent' , 'HighwayIslandEvent' ]
+                        Times = []#This is the corresponding times for the Events in the above list
+                        for row in data:
+                            if row[4] in Events:
+                                Times.append(float(row[0]))
+                        if DEBUG==1:    print " Times for the events are : " , Times
+                        #############
+                        # Times are recorded. We now move on to creating folders
+                        for eventfolder in Events:
+                            if not os.path.exists(folderpath+eventfolder):
+                                os.makedirs(folderpath+eventfolder)
+                        if DEBUG==1:    print " Folder for the events are created : " , os.listdir(folderpath)
+                        #############
+                        # Folders are created, we now move on to the clipping the data.
+                        # We make the window around events based on values
+                    except Exception as e:
+                        print " Exception recorded for participant in the Segmentation process : " , participant , " Error : ", e
+                        print  'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
+                        ile = open(LOGFILE, 'a')
+                        writer = csv.writer(file)
+                        writer.writerow([' Exception for participant ', participant , 'Exception : ', e , 'on line {}'.format(sys.exc_info()[-1].tb_lineno)])
+                        file.close()
+                ##################################################################################################
+                ##################################################################################################
                 ############# Signal Processing for raw HR, PPG, IBI and GSR signals ############################
-                # Process :
-                # 1) First we need to insert the segregation process before this segment.
-                # 2) Next we use the functions and structure below to process and analyze the data in each segment. Basically,
+                # 1) Next we use the functions and structure below to process and analyze the data in each segment. Basically,
                 # run the script for each section in current participant
-                # 3) The ECG analysis (biosppy) will output the 2 streams of data - > HR , IBI and HRV
-                # 4) The GSR signal analysis (biosppy) will output [ onset time, peak amplitude ] . This should also help with identifying
+                # 2) The ECG analysis (biosppy) will output the 2 streams of data - > HR , IBI and HRV
+                # 3) The GSR signal analysis (biosppy) will output [ onset time, peak amplitude ] . This should also help with identifying
                 # how many peaks are present.
-                # 5) The PPG signal analysis (to be done by hand) will give a measurement of heart rate and the IBI (inter-beat interval).
+                # 4) The PPG signal analysis (to be done by hand) will give a measurement of heart rate and the IBI (inter-beat interval).
                 # These are two additional measures for the same physiological data. We store and compare them to the ECG outptut.
-                ##################################################################################################
-                ##################################################################################################
-                ##### Starting the HR processing.
+                ##### Starting the HR processing ############
                 # Individual data files can be analyzed if needed using the flags at the top of the file.
-                #
                 if HRPROCESSING == 1 and participant=='P002':   ProcessingHR(participant)# ADD SECTION
                 ####################################
                 if GSRPROCESSING == 1 and participant=='P002':   ProcessingGSR(participant)# ADD SECTION
@@ -376,8 +425,10 @@ if __name__ == '__main__':
                     grouplist = ['MarkerPlot.pdf' , 'FilteredMarkers.pdf' , 'MARKERS_SHORT.csv' ]
                     for item in grouplist:
                         if os.path.exists(MAINPATH+'/Data/'+participant+'/'+item):
-                            shutil.copy(MAINPATH+'/Data/'+participant+'/'+item , MAINPATH+'/AuxillaryInformation/MarkerPlotsforAllParticipants/' + participant+item)#Adding the participant name to the item name before
+                            shutil.copy(MAINPATH+'/Data/'+participant+'/'+item , MAINPATH+'/AuxillaryInformation/BackupofImportantData/' + participant+item)#Adding the participant name to the item name before
                             if DEBUG ==1:   print "File moved ", item
+                ##################################################################################################
+                ##################################################################################################
             except Exception as e:
                 print " Exception recorded for participant : ", participant, "Error is : ", e
                 print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
