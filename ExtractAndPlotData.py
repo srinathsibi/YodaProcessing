@@ -45,6 +45,7 @@ HRPROCESSING = 0#This is to process the HR Data only
 GSRPROCESSING = 0#This is to process the GSR Data only
 BACKUPDATA = 0#This is to backup files that are important or are needed for later.
 SEGMENTDATA = 1#This is to cut the data into windows for all the data in the study.
+GSRSEGMENTATION = 1# This is the subsegment for GSR data segmentation in the SEGMENTDATA section
 #The 3 categories are defined here. Check here before adding the
 #We use this function as a key to sorting the list of folders (participants).
 CAT1 = [ 'P002', 'P004' , 'P005' , 'P007' , 'P008' , 'P009' , 'P010' , 'P011' , 'P013' , 'P016' , 'P021' , 'P023' , 'P024' , 'P025' , 'P028' , 'P032' ]
@@ -385,7 +386,22 @@ if __name__ == '__main__':
                         if DEBUG==1:    print " Folder for the events are created : " , os.listdir(folderpath)
                         #############
                         # Folders are created, we now move on to the clipping the data.
-                        # We make the window around events based on values
+                        # WindowSizes are listed below. These are to be changed for events after viewing videos, Maybe even participant by participant if necessary.
+                        GoAroundRocksWiNDOW = 20
+                        CurvedRoadsWINDOW = 20
+                        Failure1WINDOW = 20
+                        HighwayExitWINDOW = 20
+                        TURNWINDOW = 20
+                        PedestrianEventWINDOW = 20
+                        BicycleEventWINDOW = 20
+                        RoadObstructionEventWINDOW = 20
+                        HighwayEntryEventWINDOW = 20
+                        HighwayIslandEventWINDOW = 20
+                        # We segment the 4 files one at a time.
+                        # We have to divide the data one file at a time, this seems to be best way to segment data.
+                        if GSRSEGMENTATION == 1
+                            # Starting with the GSR data segmentation
+                            # Load the GSR data
                     except Exception as e:
                         print " Exception recorded for participant in the Segmentation process : " , participant , " Error : ", e
                         print  'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
