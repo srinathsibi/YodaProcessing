@@ -19,6 +19,7 @@
 # Drive Details: 1) Brake -> Col 14 ; Speed -> 16 ; Steer -> 17 ; Throttle -> 18
 # PPG Details : 1) PPG heart beat-> Col 28 ; 2) IBI (msecs) -> Col 29
 # GSR Details : 1) GSR CAL (micro siemens)-> Col 30
+# Listed below are the events we are looking for
 import os, sys, csv , re
 import matplotlib as plt
 import numpy as np
@@ -52,7 +53,22 @@ CAT1 = [ 'P002', 'P004' , 'P005' , 'P007' , 'P008' , 'P009' , 'P010' , 'P011' , 
 CAT2 = [ 'P022' , 'P037' , 'P040' , 'P042' , 'P045' , 'P046' , 'P047' , 'P055' , 'P057' , 'P058' , 'P060' , 'P064' , 'P066' , 'P067' , 'P069' , 'P071' , \
 'P076' , 'P077' , 'P085' , 'P086' , 'P087' , 'P088' , 'P089' , 'P090' , 'P090' , 'P093' , 'P094' , 'P095' , 'P096' , 'P097' ,'P098']
 CAT3 = ['P012']
-#Participants with
+# Window sizes are defined here :
+GoAroundRocksWiNDOW = 20
+CurvedRoadsWINDOW = 20
+Failure1WINDOW = 20
+HighwayExitWINDOW = 20
+TURNWINDOW = 20
+PedestrianEventWINDOW = 20
+BicycleEventWINDOW = 20
+RoadObstructionEventWINDOW = 20
+HighwayEntryEventWINDOW = 20
+HighwayIslandEventWINDOW = 20
+# Function to return the index of the element nearest to a value
+def find_nearest(array, value):
+    ''' Find nearest value is an array '''
+    idx = (np.abs(array-value)).argmin()
+    return idx
 #Function to sort the participant folder based on the number
 def SortFunc(e):
     return int( re.sub('P','',e) )
@@ -345,24 +361,6 @@ if __name__ == '__main__':
                 ##################################################################################################
                 if SEGMENTDATA ==1:
                     try:
-                        ########### Segmentation Section ############
-                        # Markers have been processed.
-                        # We now start the Segmentation of the data around the events.
-                        # We open the Abridged events and read the times for each of the following events:
-                        # 1) GoAroundRocks
-                        # 2) CurvedRoads
-                        # 3) Failure1
-                        # 4) HighwayExit
-                        # 5) RightTurn1
-                        # 6) RightTurn2
-                        # 7) PedestrianEvent
-                        # 8) TurnRight3
-                        # 9) BicycleEvent
-                        # 10) TurnRight4
-                        # 11) TurnRight5
-                        # 12) RoadObstructionEvent
-                        # 13) HighwayEntryEvent
-                        # 14) HighwayIslandEvent
                         # We read the MARKERS_SHORT.csv file and get the times for the event and save them in subfolders with the HR and GSR data
                         print " Segmenting data for participant : ", participant
                         #Open Abridged marker file :
@@ -373,35 +371,53 @@ if __name__ == '__main__':
                         file.close()
                         Events = [ 'GoAroundRocks' , 'CurvedRoads' , 'Failure1' , 'HighwayExit' , 'RightTurn1' , 'RightTurn2' , 'PedestrianEvent' , 'TurnRight3' , 'BicycleEvent' , 'TurnRight4' , 'TurnRight5'\
                         , 'RoadObstructionEvent' , 'HighwayEntryEvent' , 'HighwayIslandEvent' ]
-                        Times = []#This is the corresponding times for the Events in the above list
+                        WindowSizes = [ GoAroundRocksWiNDOW , CurvedRoadsWINDOW , Failure1WINDOW , HighwayExitWINDOW , TURNWINDOW , TURNWINDOW , PedestrianEventWINDOW , TURNWINDOW , BicycleEventWINDOW , TURNWINDOW , TURNWINDOW\
+                         , RoadObstructionEventWINDOW , HighwayEntryEventWINDOW , HighwayIslandEventWINDOW ]
+                        MarkerTimes = []#This is the corresponding times for the Events in the above list
                         for row in data:
                             if row[4] in Events:
-                                Times.append(float(row[0]))
-                        if DEBUG==1:    print " Times for the events are : " , Times
+                                MarkerTimes.append(float(row[0]))
+                        if DEBUG==0:    print " Marker Times for the events are : " , MarkerTimes
                         #############
-                        # Times are recorded. We now move on to creating folders
+                        # Marker Times are recorded. We now move on to creating folders
                         for eventfolder in Events:
                             if not os.path.exists(folderpath+eventfolder):
                                 os.makedirs(folderpath+eventfolder)
                         if DEBUG==1:    print " Folder for the events are created : " , os.listdir(folderpath)
                         #############
                         # Folders are created, we now move on to the clipping the data.
-                        # WindowSizes are listed below. These are to be changed for events after viewing videos, Maybe even participant by participant if necessary.
-                        GoAroundRocksWiNDOW = 20
-                        CurvedRoadsWINDOW = 20
-                        Failure1WINDOW = 20
-                        HighwayExitWINDOW = 20
-                        TURNWINDOW = 20
-                        PedestrianEventWINDOW = 20
-                        BicycleEventWINDOW = 20
-                        RoadObstructionEventWINDOW = 20
-                        HighwayEntryEventWINDOW = 20
-                        HighwayIslandEventWINDOW = 20
                         # We segment the 4 files one at a time.
                         # We have to divide the data one file at a time, this seems to be best way to segment data.
-                        if GSRSEGMENTATION == 1
+                        if GSRSEGMENTATION == 1:
                             # Starting with the GSR data segmentation
                             # Load the GSR data
+                            file = open( folderpath+'GSR.csv','r')
+                            reader = csv.reader(file)
+                            ignore = next(reader)#This is the header
+                            data = list(reader)
+                            file.close()
+                            time = [ float(row[2]) for row in data ]
+                            gsr = [ float(row[4]) for row in data ]
+                            marker = [ float(row[3]) for row in data ]
+                            # data loadded.
+                            # For every event , we find the index of the element in time, then we subtract and add WindowSizes. Then we use the find_nearest function
+                            # to get nearest value's index for the edges of the windows. These indices can then be used to extract the
+                            for i,event in enumerate(Events):
+                                windowstart = MarkerTimes[i] - WindowSizes[i]
+                                windowend = MarkerTimes[i] + WindowSizes[i]
+                                #Now we need to find the index of the windowstart and windowend times in the time list and then seek the corresponding values in the gsr data too
+                                index_Marker = find_nearest( np.asarray(time) , MarkerTimes[i] )
+                                index_windowstart = find_nearest( np.asarray(time) , windowstart )
+                                index_windowend = find_nearest( np.asarray(time) , windowend )
+                                if DEBUG == 0:  print " Calculating the time using the find_nearest function for : ", event , " is " , time[index_Marker]
+                                # Need to create a file for writing the data
+                                file = open (folderpath+event+'/GSR.csv' ,'wb')
+                                writer = csv.writer(file)
+                                writer.writerow(['Time' , 'Marker' , 'GSR'])
+                                # Now that we have the indices, we can clip the relevant information and write to the file
+                                for i in range(index_windowstart , index_windowend):
+                                    writer.writerow([ time[i] , marker[i] , gsr[i] ])
+                                file.close()
                     except Exception as e:
                         print " Exception recorded for participant in the Segmentation process : " , participant , " Error : ", e
                         print  'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
