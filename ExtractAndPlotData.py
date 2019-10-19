@@ -46,8 +46,10 @@ HRPROCESSING = 0#This is to process the HR Data only
 GSRPROCESSING = 0#This is to process the GSR Data only
 BACKUPDATA = 0#This is to backup files that are important or are needed for later.
 SEGMENTDATA = 1#This is to cut the data into windows for all the data in the study.
-GSRSEGMENTATION = 1# This is the subsegment for GSR data segmentation in the SEGMENTDATA section
-HRSEGMENTATION = 1# This is the subsegment for HR data segmentation in the SEGMENTDATA section
+GSRSEGMENTATION = 0# This is the subsegment for GSR data segmentation in the SEGMENTDATA section
+HRSEGMENTATION = 0# This is the subsegment for HR data segmentation in the SEGMENTDATA section
+PPGSEGMENTATION = 0# This is the subsection for PPG data separation in the SEGMENTDATA section
+DRIVESEGMENTATION = 1# This is the subsection for DRIVE sata separation in the SEGMENTDATA section
 #The 3 categories are defined here. Check here before adding the
 #We use this function as a key to sorting the list of folders (participants).
 CAT1 = [ 'P002', 'P004' , 'P005' , 'P007' , 'P008' , 'P009' , 'P010' , 'P011' , 'P013' , 'P016' , 'P021' , 'P023' , 'P024' , 'P025' , 'P028' , 'P032' ]
@@ -410,7 +412,7 @@ if __name__ == '__main__':
                                 index_Marker = find_nearest( np.asarray(time) , MarkerTimes[i] )
                                 index_windowstart = find_nearest( np.asarray(time) , windowstart )
                                 index_windowend = find_nearest( np.asarray(time) , windowend )
-                                if DEBUG == 1:  print " Calculating the time using the find_nearest function for : ", event , " is " , time[index_Marker]
+                                if DEBUG == 1:  print " Verification of marker index using find_nearest function for : ", event , " is " , time[index_Marker]
                                 # Need to create a file for writing the data
                                 file = open (folderpath+event+'/GSR.csv' ,'wb')
                                 writer = csv.writer(file)
@@ -441,7 +443,7 @@ if __name__ == '__main__':
                                 index_Marker = find_nearest( np.asarray(time) , MarkerTimes[i] )
                                 index_windowstart = find_nearest( np.asarray(time) , windowstart )
                                 index_windowend = find_nearest( np.asarray(time) , windowend )
-                                if DEBUG == 0:  print " Calculating the time using the find_nearest function for : " , event , " is " , time[index_Marker]
+                                if DEBUG == 1:  print " Verification of marker index using find_nearest function for : " , event , " is " , time[index_Marker]
                                 # Need to create a file for writing the data
                                 file = open ( folderpath+event+'/HR.csv' , 'wb')
                                 writer = csv.writer(file)
@@ -449,6 +451,62 @@ if __name__ == '__main__':
                                 # Now that we have the indices, we can clip the relevant information and write to the file
                                 for i in range(index_windowstart , index_windowend):
                                     writer.writerow([ time[i] , marker[i] , hr1[i] , hr2[i] , hr3[i] , hr4[i] ])
+                                file.close()
+                        if PPGSEGMENTATION == 1:
+                            # PPG data segmentation
+                            file = open( folderpath + 'PPG.csv' , 'r' )
+                            reader = csv.reader(file)
+                            ignore = next(reader)
+                            data = list(reader)
+                            file.close()
+                            time = [ float(row[2]) for row in data ]
+                            marker = [ float(row[3]) for row in data ]
+                            ppg = [ float(row[4]) for row in data ]
+                            ibi = [ float(row[5]) for row in data ]
+                            # Data loaded
+                            for i, event in enumerate(Events):
+                                windowstart = MarkerTimes[i] - WindowSizes[i]
+                                windowend = MarkerTimes[i] + WindowSizes[i]
+                                # Find the indices of the markers and the window start and the window ends
+                                index_Marker = find_nearest( np.asarray(time) , MarkerTimes[i] )
+                                index_windowend = find_nearest( np.asarray(time) , windowend )
+                                index_windowstart = find_nearest( np.asarray(time), windowstart )
+                                if DEBUG == 1: print " Verification of marker index using find_nearest function for : ", event , " is " , time[index_Marker]
+                                # Output for the PPG file
+                                file = open( folderpath+event+'/PPG.csv' , 'wb' )
+                                writer = csv.writer(file)
+                                writer.writerow( [ 'Time' , 'Marker' , 'PPG' , 'IBI' ] )#Header
+                                for i in range(index_windowstart, index_windowend):
+                                    writer.writerow([ time[i] , marker[i] , ppg[i] , ibi[i] ])
+                                file.close()
+                        if DRIVESEGMENTATION == 1:
+                            # DRIVE data segmentation
+                            file = open( folderpath+'DRIVE.csv' ,'r')
+                            reader = csv.reader(file)
+                            ignore = next(reader)
+                            data = list(reader)
+                            file.close()
+                            time = [ float(row[2]) for row in data ]
+                            marker = [ float(row[3]) for row in data ]
+                            brake = [ float(row[4]) for row in data ]
+                            speed = [ float(row[5]) for row in data ]
+                            steer = [ float(row[6]) for row in data ]
+                            throttle = [ float(row[7]) for row in data ]
+                            #Data Loaded
+                            for i , event in enumerate(Events):
+                                windowstart = MarkerTimes[i] - WindowSizes[i]
+                                windowend = MarkerTimes[i] + WindowSizes[i]
+                                #locating the indices
+                                index_Marker = find_nearest(np.asarray(time) , MarkerTimes[i] )
+                                index_windowstart = find_nearest(np.asarray(time) , windowstart )
+                                index_windowend = find_nearest(np.asarray(time) , windowend )
+                                if DEBUG == 0: print " Verification of marker index using find_nearest function for : ", event , " is " , time[index_Marker]
+                                #output file writing
+                                file = open(folderpath+event+'/DRIVE.csv' , 'wb' )
+                                writer= csv.writer(file)
+                                writer.writerow([ 'Time' , 'Marker' , 'Brake' , 'Speed' , 'Steer' , 'Throttle' ])#Header
+                                for i in range(index_windowstart , index_windowend):
+                                    writer.writerow([ time[i] , marker[i] , brake[i] , speed[i] , steer[i] , throttle[i] ])
                                 file.close()
                     except Exception as e:
                         print " Exception recorded for participant in the Segmentation process : " , participant , " Error : ", e
