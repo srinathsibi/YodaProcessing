@@ -47,6 +47,7 @@ GSRPROCESSING = 0#This is to process the GSR Data only
 BACKUPDATA = 0#This is to backup files that are important or are needed for later.
 SEGMENTDATA = 1#This is to cut the data into windows for all the data in the study.
 GSRSEGMENTATION = 1# This is the subsegment for GSR data segmentation in the SEGMENTDATA section
+HRSEGMENTATION = 1# This is the subsegment for HR data segmentation in the SEGMENTDATA section
 #The 3 categories are defined here. Check here before adding the
 #We use this function as a key to sorting the list of folders (participants).
 CAT1 = [ 'P002', 'P004' , 'P005' , 'P007' , 'P008' , 'P009' , 'P010' , 'P011' , 'P013' , 'P016' , 'P021' , 'P023' , 'P024' , 'P025' , 'P028' , 'P032' ]
@@ -409,7 +410,7 @@ if __name__ == '__main__':
                                 index_Marker = find_nearest( np.asarray(time) , MarkerTimes[i] )
                                 index_windowstart = find_nearest( np.asarray(time) , windowstart )
                                 index_windowend = find_nearest( np.asarray(time) , windowend )
-                                if DEBUG == 0:  print " Calculating the time using the find_nearest function for : ", event , " is " , time[index_Marker]
+                                if DEBUG == 1:  print " Calculating the time using the find_nearest function for : ", event , " is " , time[index_Marker]
                                 # Need to create a file for writing the data
                                 file = open (folderpath+event+'/GSR.csv' ,'wb')
                                 writer = csv.writer(file)
@@ -417,6 +418,37 @@ if __name__ == '__main__':
                                 # Now that we have the indices, we can clip the relevant information and write to the file
                                 for i in range(index_windowstart , index_windowend):
                                     writer.writerow([ time[i] , marker[i] , gsr[i] ])
+                                file.close()
+                        if HRSEGMENTATION == 1:
+                            # Next up is the HR data segmentation
+                            # Load the HR data
+                            file = open (folderpath+'HR.csv' , 'r')
+                            reader = csv.reader(file)
+                            ignore = next(reader)
+                            data = list(reader)
+                            file.close()
+                            time = [ float(row[2]) for row in data ]
+                            markers = [ float(row[3]) for row in data ]
+                            hr1 = [ float(row[4]) for row in data ]
+                            hr2 = [ float(row[5]) for row in data ]
+                            hr3 = [ float(row[6]) for row in data ]
+                            hr4 = [ float(row[7]) for row in data ]
+                            # Data Loaded
+                            for i,event in enumerate(Events):
+                                windowstart = MarkerTimes[i] - WindowSizes[i]
+                                windowend = MarkerTimes[i] + WindowSizes[i]
+                                #Find the indices of the markers and the windows start and window ends
+                                index_Marker = find_nearest( np.asarray(time) , MarkerTimes[i] )
+                                index_windowstart = find_nearest( np.asarray(time) , windowstart )
+                                index_windowend = find_nearest( np.asarray(time) , windowend )
+                                if DEBUG == 0:  print " Calculating the time using the find_nearest function for : " , event , " is " , time[index_Marker]
+                                # Need to create a file for writing the data
+                                file = open ( folderpath+event+'/HR.csv' , 'wb')
+                                writer = csv.writer(file)
+                                writer.writerow([ 'Time' , 'Marker' , 'ECG1' , 'ECG2' , 'ECG3' , 'ECG4' ])
+                                # Now that we have the indices, we can clip the relevant information and write to the file
+                                for i in range(index_windowstart , index_windowend):
+                                    writer.writerow([ time[i] , marker[i] , hr1[i] , hr2[i] , hr3[i] , hr4[i] ])
                                 file.close()
                     except Exception as e:
                         print " Exception recorded for participant in the Segmentation process : " , participant , " Error : ", e
