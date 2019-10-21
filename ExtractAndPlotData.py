@@ -19,7 +19,9 @@
 # Drive Details: 1) Brake -> Col 14 ; Speed -> 16 ; Steer -> 17 ; Throttle -> 18
 # PPG Details : 1) PPG heart beat-> Col 28 ; 2) IBI (msecs) -> Col 29
 # GSR Details : 1) GSR CAL (micro siemens)-> Col 30
-# Listed below are the events we are looking for
+# Listed below are the events we are looking for :
+# Events = [ 'GoAroundRocks' , 'CurvedRoads' , 'Failure1' , 'HighwayExit' , 'RightTurn1' , 'RightTurn2' , 'PedestrianEvent' , 'TurnRight3' , 'BicycleEvent' , 'TurnRight4' , 'TurnRight5'\
+#, 'RoadObstructionEvent' , 'HighwayEntryEvent' , 'HighwayIslandEvent' ]
 import os, sys, csv , re
 import matplotlib as plt
 import numpy as np
@@ -33,23 +35,27 @@ import shutil
 from statistics import mean
 from PlottingFunctions import *
 from biosppy.signals import ecg, eda
+import heartpy as hp
 LOGFILE = os.path.abspath('.') + '/CurrentOutputFile.csv'#Using one output file for all the scripts from now to avoid flooding the working folder
 MAINPATH = os.path.abspath('.')#Always specify absolute path for all path specification and file specifications
 DEBUG = 0# To print statements for debugging
 TOPELIMINATION = 100
 READANDEXTRACTINDIVIDUALFILES = 0# This is the flag to make sure that files are read from the start
 MAKEPLOTS = 0#Make the individual plots from the files of all the data streams
-REMOVEFILE = 0# We are using this marker to remove a file with the same name across all participatns in similar locations.
 PROCESSMARKERS = 0#Analyze the markers and make abridged version of the markers file for event processing
-REWRITEABRIDGEDMARKERFILE = 0;#This Flag is to rewrite the marker file.
-HRPROCESSING = 0#This is to process the HR Data only
-GSRPROCESSING = 0#This is to process the GSR Data only
-BACKUPDATA = 0#This is to backup files that are important or are needed for later.
-SEGMENTDATA = 1#This is to cut the data into windows for all the data in the study.
+REWRITEABRIDGEDMARKERFILE = 0#This Flag is to rewrite the marker file.
+SEGMENTDATA = 0#This is to cut the data into windows for all the data in the study.
 GSRSEGMENTATION = 0# This is the subsegment for GSR data segmentation in the SEGMENTDATA section
 HRSEGMENTATION = 0# This is the subsegment for HR data segmentation in the SEGMENTDATA section
 PPGSEGMENTATION = 0# This is the subsection for PPG data separation in the SEGMENTDATA section
 DRIVESEGMENTATION = 1# This is the subsection for DRIVE sata separation in the SEGMENTDATA section
+SIGNALPROCESSING = 1# This is the flag to signal the
+HRPROCESSING = 1#This is to process the HR Data only
+BIOSPPYVSHEARTPY = 0# This flag is to determine if we want to use biosppy or heartpy ( 0 - biosppy vs 1 - heartpy)
+GSRPROCESSING = 0#This is to process the GSR Data only
+PPGPROCESSING =0# This is to process the PPG Data only
+BACKUPDATA = 0#This is to backup files that are important or are needed for later.
+REMOVEFILE = 0# We are using this marker to remove a file with the same name across all participatns in similar locations.
 #The 3 categories are defined here. Check here before adding the
 #We use this function as a key to sorting the list of folders (participants).
 CAT1 = [ 'P002', 'P004' , 'P005' , 'P007' , 'P008' , 'P009' , 'P010' , 'P011' , 'P013' , 'P016' , 'P021' , 'P023' , 'P024' , 'P025' , 'P028' , 'P032' ]
@@ -76,34 +82,68 @@ def find_nearest(array, value):
 def SortFunc(e):
     return int( re.sub('P','',e) )
 #Function to process the ECG data with the biosppy.
-def ProcessingHR(participant):
-    print " Processing the HR data for : " , participant
+def ProcessingHR(participant, section):
+    if DEBUG ==0:   print " Processing the HR data for : " , participant,  "in section : " , section
     try:
         # we operate in the example folder in P002, but we no longer have to do this for later iters
         # opening the file
-        file = open(MAINPATH+'/Data/'+participant+'/Example/HR.csv' , 'r')
+        file = open(MAINPATH+'/Data/'+participant+ '/' + section + '/HR.csv' , 'r')
         reader = csv.reader(file)
         header = next(reader)
         data = list (reader)
         file.close()
         #We are going to set the limits to see if we can identify the peaks effectively with the algorithm for biosppy
-        time = [ float(row[2]) for row in data[100:20000] ]
-        ECG1 = [ float(row[4]) for row in data[101:20000] ]
-        ECG2 = [ float(row[5]) for row in data[100:20000] ]
-        ECG3 = [ float(row[6]) for row in data[100:20000] ]
-        ECG4 = [ float(row[7]) for row in data[100:20000] ]
-        # We need to calculate sampling rate as an average of the interval between all the time points. If the value is too far from the 1024 Hz, then we need to look at plots.
-        out = ecg.ecg(signal=ECG1, sampling_rate=1024 , show=False)
-        # Biosppy works really well in ECG processing, it takes the source of the ECG amd identifies the peaks and calculates the heart rates between the peaks.
-        # the output of the ecg.ecg function ( 'out' in this case), contains all the processes output of the ecg.ecg() .
-        # Output columns : ['ts', 'filtered', 'rpeaks', 'templates_ts', 'templates', 'heart_rate_ts', 'heart_rate']
-        # Output is a weird tuple||dict hybrid. Using the as_dict() function makes it a little better, though obviously the best thing to do is just convert to a list.
-        # Using out[-1] , out[-2] we can get the heart rate and the heart rate at which the time was recorded. Keep in mind the time is relative to the start of the interval used in the data subset
-        # and is NOT absolute time.
-        # Also the indices at which the r-peaks occur is given in the r-peaks interval, which is convenient for r-r interval calculation if needed
-        # NOTE : there are 'n+1' r-peaks for every 'n' sample points of heart rate calculated [ out[-1] , out[-2] have n columns, while out[2] has n+1 columns ].
-        print " The output of the biosppy processing: " , " Output as dict : " , out.as_dict() , "\n\n\n Output keys : " , out.keys()
-        #, '\n\n\n' , len(out[-1]) , '\n\n\n' , len(out[-2]) , 'r-peaks' , len(out[2])
+        time = [ float(row[0]) for row in data[100:20000] ]
+        ECG1 = [ float(row[2]) for row in data[101:20000] ]
+        ECG2 = [ float(row[3]) for row in data[100:20000] ]
+        ECG3 = [ float(row[4]) for row in data[100:20000] ]
+        ECG4 = [ float(row[5]) for row in data[100:20000] ]
+        if BIOSPPYVSHEARTPY == 0:
+            # We need to calculate sampling rate as an average of the interval between all the time points. If the value is too far from the 1024 Hz, then we need to look at plots.
+            try:
+                out = ecg.ecg(signal=ECG1, sampling_rate=1024 , show=False)
+            except:
+                try:
+                    out = ecg.ecg(signal=ECG2, sampling_rate=1024 , show=True)
+                except:
+                    try:
+                        out = ecg.ecg(signal=ECG3, sampling_rate=1024 , show=True)
+                    except:
+                        try:
+                            out = ecg.ecg(signal=ECG4, sampling_rate=1024 , show=True)
+                        except Exception as e:
+                            print "Biosppy Processing Exception in ecg.ecg for participant: " , participant , ' in seciton: ' , section , 'Exception recorded: ' , e
+                            print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
+                            file = open(LOGFILE,'a')
+                            writer = csv.writer(file)
+                            writer.writerow([' Biosppy Processing Exception in ecg.ecg for participant: ', participant , 'in section' , section , 'Exception recorded: ', e , 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno) ])
+                            file.close()
+            # Biosppy works really well in ECG processing, it takes the source of the ECG amd identifies the peaks and calculates the heart rates between the peaks.
+            # the output of the ecg.ecg function ( 'out' in this case), contains all the processes output of the ecg.ecg() .
+            # Output columns : ['ts', 'filtered', 'rpeaks', 'templates_ts', 'templates', 'heart_rate_ts', 'heart_rate']
+            # Output is a weird tuple||dict hybrid. Using the as_dict() function makes it a little better, though obviously the best thing to do is just convert to a list.
+            # Using out[-1] , out[-2] we can get the heart rate and the heart rate at which the time was recorded. Keep in mind the time is relative to the start of the interval used in the data subset
+            # and is NOT absolute time.
+            # Also the indices at which the r-peaks occur is given in the r-peaks interval, which is convenient for r-r interval calculation if needed
+            # NOTE : there are 'n+1' r-peaks for every 'n' sample points of heart rate calculated [ out[-1] , out[-2] have n columns, while out[2] has n+1 columns ].
+            if DEBUG==0:    print " The output of the biosppy processing: " , "\n\n\n Output keys : " , out.keys()#, " Output as dict : " , out.as_dict()
+            #, '\n\n\n' , len(out[-1]) , '\n\n\n' , len(out[-2]) , 'r-peaks' , len(out[2])
+        elif BIOSPPYVSHEARTPY == 1:#DONT USE FOR NOW. THIS ONLY WORKS IF ECG SIGNALS ARE ALL POSITIVE.
+            try:
+                time = [ float(row[0]) for row in data[100:20000] ]
+                ECG1 = [ float(row[2]) for row in data[101:20000] ]
+                ECG2 = [ float(row[3]) for row in data[100:20000] ]
+                ECG3 = [ float(row[4]) for row in data[100:20000] ]
+                ECG4 = [ float(row[5]) for row in data[100:20000] ]
+                working_data , measures = hp.process(ECG1 , 1024.0)
+                hp.plotter( working_data , measures , show =True  , title = ' Heart Beat Detection using the HeartPy algorithm for participant'+participant+' in section '+section )
+            except Exception as e:
+                print "HeartPy Processing Exception in hp.process() for participant: " , participant , ' in seciton: ' , section , 'Exception recorded: ' , e
+                print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
+                file = open(LOGFILE,'a')
+                writer = csv.writer(file)
+                writer.writerow([' HeartPy Processing Exception in ecg.ecg for participant: ', participant , 'in section' , section , 'Exception recorded: ', e , 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno) ])
+                file.close()
     except Exception as e:
         print "HR Processing Exception Catcher for participant: " , participant , 'Exception recorded: ' , e
         print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
@@ -112,7 +152,7 @@ def ProcessingHR(participant):
         writer.writerow([' HR Processing Function Exception Caught for participant: ', participant , 'Exception recorded: ', e , 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno) ])
         file.close()
 #Function to analyze the GSR data with biosppy eda function
-def ProcessingGSR(participant):
+def ProcessingGSR(participant, section):
     print " Processing the GSR data for : ", participant
     try:
         #Opening the GSR File. For now, we operate in the Example file for now
@@ -139,7 +179,10 @@ def ProcessingGSR(participant):
         writer = csv.writer(file)
         writer.writerow([' HR Processing Function Exception Caught for participant: ', participant , 'Exception recorded: ', e , 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno) ])
         file.close()
-#the time converter from iMotions data. Use the column Timestamp (col 10) from the iMotions file.
+# Function to analyze the PPG data. This is handwritten since biosppy doesn't have functions for this. A
+#The time converter from iMotions data. Use the column Timestamp (col 10) from the iMotions file.
+def ProcessingPPG(participant, section):
+    if DEBUG==1:    print " Processing the PPG values for participant " , participant , " in section " , section
 def iMotionsTimeConverter(inputcode):
     decimal = float(inputcode%1000)/1000
     inputcode = (inputcode - 1000*decimal)/1000
@@ -500,7 +543,7 @@ if __name__ == '__main__':
                                 index_Marker = find_nearest(np.asarray(time) , MarkerTimes[i] )
                                 index_windowstart = find_nearest(np.asarray(time) , windowstart )
                                 index_windowend = find_nearest(np.asarray(time) , windowend )
-                                if DEBUG == 0: print " Verification of marker index using find_nearest function for : ", event , " is " , time[index_Marker]
+                                if DEBUG == 1: print " Verification of marker index using find_nearest function for : ", event , " is " , time[index_Marker]
                                 #output file writing
                                 file = open(folderpath+event+'/DRIVE.csv' , 'wb' )
                                 writer= csv.writer(file)
@@ -517,21 +560,31 @@ if __name__ == '__main__':
                         file.close()
                 ##################################################################################################
                 ##################################################################################################
-                ############# Signal Processing for raw HR, PPG, IBI and GSR signals ############################
-                # 1) Next we use the functions and structure below to process and analyze the data in each segment. Basically,
-                # run the script for each section in current participant
-                # 2) The ECG analysis (biosppy) will output the 2 streams of data - > HR , IBI and HRV
-                # 3) The GSR signal analysis (biosppy) will output [ onset time, peak amplitude ] . This should also help with identifying
-                # how many peaks are present.
-                # 4) The PPG signal analysis (to be done by hand) will give a measurement of heart rate and the IBI (inter-beat interval).
-                # These are two additional measures for the same physiological data. We store and compare them to the ECG outptut.
-                ##### Starting the HR processing ############
-                # Individual data files can be analyzed if needed using the flags at the top of the file.
-                if HRPROCESSING == 1 and participant=='P002':   ProcessingHR(participant)# ADD SECTION
-                ####################################
-                if GSRPROCESSING == 1 and participant=='P002':   ProcessingGSR(participant)# ADD SECTION
-                ####################################
-                ###### Now moving on to the PPG and IBI data. There's no processing this using , we need to do this by hand.
+                if SIGNALPROCESSING == 1:
+                    ############# Signal Processing for raw HR, PPG, IBI and GSR signals ############################
+                    # 1) Next we use the functions and structure below to process and analyze the data in each segment. Basically,
+                    # run the script for each section in current participant
+                    # 2) The ECG analysis (biosppy) will output the 2 streams of data - > HR , IBI and HRV
+                    # 3) The GSR signal analysis (biosppy) will output [ onset time, peak amplitude ] . This should also help with identifying
+                    # how many peaks are present.
+                    # 4) The PPG signal analysis (to be done by hand) will give a measurement of heart rate and the IBI (inter-beat interval).
+                    # These are two additional measures for the same physiological data. We store and compare them to the ECG outptut.
+                    ##### Starting the HR processing ############
+                    # Individual data files can be analyzed if needed using the flags at the top of the file.
+                    ##############
+                    #Declaring the Events
+                    Events = [ 'GoAroundRocks' , 'CurvedRoads' , 'Failure1' , 'HighwayExit' , 'RightTurn1' , 'RightTurn2' , 'PedestrianEvent' , 'TurnRight3' , 'BicycleEvent' , 'TurnRight4' , 'TurnRight5'\
+                    , 'RoadObstructionEvent' , 'HighwayEntryEvent' , 'HighwayIslandEvent' ]
+                    for event in Events:
+                        if HRPROCESSING == 1:# and participant=='P002':
+                            ProcessingHR(participant, event)
+                        ####################################
+                        if GSRPROCESSING == 1:# and participant=='P002':
+                            ProcessingGSR(participant, event)
+                        ####################################
+                        if PPGPROCESSING == 1:# and participant=='P002':
+                            ProcessingPPG(participant, event)
+                        # We ignore the Drive Data for later
                 ##################################################################################################
                 ##################################################################################################
                 if REMOVEFILE ==1:
