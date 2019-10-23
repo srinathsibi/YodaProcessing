@@ -81,6 +81,97 @@ def find_nearest(array, value):
 #Function to sort the participant folder based on the number
 def SortFunc(e):
     return int( re.sub('P','',e) )
+#Function to estimate the sampling rate and plot it. it is not needed for later.
+def CalculateSamplingRate(time, participant, section):
+    if DEBUG ==1:   print " Function to estimate the sampling rate using the time list. "
+    try:
+        samplingrates =[]
+        for i in range(len(time) - 1):
+            try:
+                samplingrates.append( (1 / (time[i+1] - time[i]) ) )
+            except ZeroDivisionError:
+                pass
+        #Plotting the sampling rate to get a better picture
+        #starting the plot
+        fig = plt.figure()
+        fig.tight_layout()
+        plt.title('Raw Sampling Rate (Hz)')
+        plt.plot(range(len(samplingrates[0:300])), samplingrates[0:300], 'r-', label =  'Sampling Rate', linewidth = 0.1)
+        if DEBUG == 1:
+            print "First few elements of the x and y data are : ", x_data[0:3] ,'\n', y_data[0:3]
+        plt.xlabel('Index')
+        plt.ylabel('Sampling Rate')
+        plt.legend(loc = 'upper right')
+        plt.savefig(MAINPATH+'/Data/'+participant+'/'+section+'/SamplingFrequency.pdf', bbox_inches = 'tight', dpi=900 , quality = 100)
+        plt.close()
+        if DEBUG==1:    print " Average sampling rate : " , mean(samplingrates)
+        return mean(samplingrates)
+    except Exception as e:
+        print "Sampling rate calculation exception for participant: " , participant , ' in seciton: ' , section , 'Exception recorded: ' , e
+        print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
+        file = open(LOGFILE,'a')
+        writer = csv.writer(file)
+        writer.writerow(['Sampling rate calculation exception for participant: ', participant , 'in section' , section , 'Exception recorded: ', e , 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno) ])
+        file.close()
+#Function to resample the data into the data with a target sampling frequency
+def Resample( time, signal , participant , section , target_fs = 1000.0 , type = 'ecg' ):
+    try:
+        if DEBUG ==0:   print " The resampling function for " , participant , " section : " , section
+        # First we need to eliminate the repeating data points
+        time_1 = [time[0]]# Intermediate to final resampling
+        signal_1= [signal[0]]
+        for i in range(len(time)):
+            if i >=1:#Making sure that we start the searching for repeat time points on the second index
+                if time[i] == time[i-1]:
+                    pass# Do not append the data to the new array if it's a repeat time step
+                elif time[i] != time[i-1]:
+                    time_1.append(time[i])
+                    signal_1.append(signal[i])
+        if DEBUG==1:    print "Raw Time sample : " , time[0:150] , "\n\n\nTime sample after repeat elimination: " , time_1[0:150]
+        # The above section works
+        # Before we make sure that we can samples in the data , we need to round to third decimal
+        for i in range(len(time_1)):
+            time_1[i] = round(time_1[i] , 3)
+        # Now we create a linearly spaced time array between the start and the end points based on the sampling frequency privided
+        N = ( 1 / target_fs )# Calculating number of samples based on
+        time_2 = np.arange( time_1[0] , time_1[-1] , N ).tolist()
+        for i in range(len(time_2)):
+            time_2[i] = round(time_2[i] , 3)
+        if DEBUG==1:    print "Time sample after repeat elimination : " , time_1[0:150] , "\n\n\nTime sample with target fs intervals: " , time_2[0:150]
+        signal_2 = [np.nan]*len(time_2)
+        # We need to create a list with
+        # Now we need to make sure that we input the values in the time_1 array that matches the values in the time_2 array
+        for i in range(len(time_2)):
+            if time_2[i] in time_1:
+                signal_2[i] = signal_1[ time_1.index(time_2[i]) ]
+        if DEBUG==1:    print "Raw Signal sample:" , signal_1[0:100] , "\n\n\n Upsampled Signal: " , signal_2[0:100]
+        ###################################################################################
+        # The signal has been upsampled and the signal_2 and time_2 now have the target_fs and can be interpolated
+        # BEGIN INTERPOLATION
+        signal_pd = pd.Series(signal_2)
+        signal_pd = signal_pd.interpolate(kind = 'cubic', inplace = False)
+        # CONVERTING THE UPSAMPLED PANDAS SERIES TO THE OUTPUT LIST
+        signal_resampled = signal_pd.tolist()
+        time_resampled = time_2
+        if DEBUG==0:    print "\n\n\n Upsampled Signal: " , signal_2[0:100] , "\n\n\nInterpolated Signal: " , signal_resampled[0:100]
+        # I have confirmed by verification of data that the signal interpolate worked. Now we ensure by plotting some of the samples
+        # USE THIS SECTION ONLY TO VERIFY THE ACCURACY OF THE RESAMPLING PROCESS
+        #fig = plt.figure()
+        #fig.tight_layout()
+        #plt.title('Comparison of raw and resampled signal')
+        #plt.subplot(2,1,1)
+        #plt.plot(time_1[0:1500], signal_1[0:1500], label = 'Raw Signal' , linewidth = 0.1)
+        #plt.subplot(2,1,2)
+        #plt.plot(time_resampled[0:1500], signal_resampled[0:1500], label = 'Resampled Signal' , linewidth = 0.1)
+        #plt.show()
+        return time_resampled , signal_resampled
+    except Exception as e:
+        print "Resampling exception for participant: " , participant , ' in section: ' , section , 'Exception recorded: ' , e
+        print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
+        file = open(LOGFILE,'a')
+        writer = csv.writer(file)
+        writer.writerow(['Resampling exception for participant: ', participant , 'in section' , section , 'Exception recorded: ', e , 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno) ])
+        file.close()
 #Function to process the ECG data with the biosppy.
 def ProcessingHR(participant, section):
     if DEBUG ==0:   print " Processing the HR data for : " , participant,  "in section : " , section
@@ -93,57 +184,44 @@ def ProcessingHR(participant, section):
         data = list (reader)
         file.close()
         #We are going to set the limits to see if we can identify the peaks effectively with the algorithm for biosppy
-        time = [ float(row[0]) for row in data[100:20000] ]
-        ECG1 = [ float(row[2]) for row in data[101:20000] ]
-        ECG2 = [ float(row[3]) for row in data[100:20000] ]
-        ECG3 = [ float(row[4]) for row in data[100:20000] ]
-        ECG4 = [ float(row[5]) for row in data[100:20000] ]
-        if BIOSPPYVSHEARTPY == 0:
-            # We need to calculate sampling rate as an average of the interval between all the time points. If the value is too far from the 1024 Hz, then we need to look at plots.
+        time = [ float(row[0]) for row in data ]
+        ECG1 = [ float(row[2]) for row in data ]
+        ECG2 = [ float(row[3]) for row in data ]
+        ECG3 = [ float(row[4]) for row in data ]
+        ECG4 = [ float(row[5]) for row in data ]
+        #ECGData = [ [float(row[2]), float(row[3]), float(row[4]), float(row[5])] for row in data ]
+        # We need to calculate sampling rate as an average of the interval between all the time points. If the value is too far from the 1024 Hz, then we need to look at plots.
+        fs = CalculateSamplingRate(time, participant, section)#We plot the raw sampling rate.
+        # Sampling rate needs to firmly fixed at 1000 Hz
+        time_resampled , ECG1_resampled = Resample( time , ECG1 , participant , section , 1000.0 , 'ecg' )
+        try:
+            out = ecg.ecg(signal=ECG1, sampling_rate=1000 , show=False)
+        except:
             try:
-                out = ecg.ecg(signal=ECG1, sampling_rate=1024 , show=False)
+                out = ecg.ecg(signal=ECG2, sampling_rate=1000 , show=False)
             except:
                 try:
-                    out = ecg.ecg(signal=ECG2, sampling_rate=1024 , show=True)
+                    out = ecg.ecg(signal=ECG3, sampling_rate=1000 , show=False)
                 except:
                     try:
-                        out = ecg.ecg(signal=ECG3, sampling_rate=1024 , show=True)
-                    except:
-                        try:
-                            out = ecg.ecg(signal=ECG4, sampling_rate=1024 , show=True)
-                        except Exception as e:
-                            print "Biosppy Processing Exception in ecg.ecg for participant: " , participant , ' in seciton: ' , section , 'Exception recorded: ' , e
-                            print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
-                            file = open(LOGFILE,'a')
-                            writer = csv.writer(file)
-                            writer.writerow([' Biosppy Processing Exception in ecg.ecg for participant: ', participant , 'in section' , section , 'Exception recorded: ', e , 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno) ])
-                            file.close()
-            # Biosppy works really well in ECG processing, it takes the source of the ECG amd identifies the peaks and calculates the heart rates between the peaks.
-            # the output of the ecg.ecg function ( 'out' in this case), contains all the processes output of the ecg.ecg() .
-            # Output columns : ['ts', 'filtered', 'rpeaks', 'templates_ts', 'templates', 'heart_rate_ts', 'heart_rate']
-            # Output is a weird tuple||dict hybrid. Using the as_dict() function makes it a little better, though obviously the best thing to do is just convert to a list.
-            # Using out[-1] , out[-2] we can get the heart rate and the heart rate at which the time was recorded. Keep in mind the time is relative to the start of the interval used in the data subset
-            # and is NOT absolute time.
-            # Also the indices at which the r-peaks occur is given in the r-peaks interval, which is convenient for r-r interval calculation if needed
-            # NOTE : there are 'n+1' r-peaks for every 'n' sample points of heart rate calculated [ out[-1] , out[-2] have n columns, while out[2] has n+1 columns ].
-            if DEBUG==0:    print " The output of the biosppy processing: " , "\n\n\n Output keys : " , out.keys()#, " Output as dict : " , out.as_dict()
-            #, '\n\n\n' , len(out[-1]) , '\n\n\n' , len(out[-2]) , 'r-peaks' , len(out[2])
-        elif BIOSPPYVSHEARTPY == 1:#DONT USE FOR NOW. THIS ONLY WORKS IF ECG SIGNALS ARE ALL POSITIVE.
-            try:
-                time = [ float(row[0]) for row in data[100:20000] ]
-                ECG1 = [ float(row[2]) for row in data[101:20000] ]
-                ECG2 = [ float(row[3]) for row in data[100:20000] ]
-                ECG3 = [ float(row[4]) for row in data[100:20000] ]
-                ECG4 = [ float(row[5]) for row in data[100:20000] ]
-                working_data , measures = hp.process(ECG1 , 1024.0)
-                hp.plotter( working_data , measures , show =True  , title = ' Heart Beat Detection using the HeartPy algorithm for participant'+participant+' in section '+section )
-            except Exception as e:
-                print "HeartPy Processing Exception in hp.process() for participant: " , participant , ' in seciton: ' , section , 'Exception recorded: ' , e
-                print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
-                file = open(LOGFILE,'a')
-                writer = csv.writer(file)
-                writer.writerow([' HeartPy Processing Exception in ecg.ecg for participant: ', participant , 'in section' , section , 'Exception recorded: ', e , 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno) ])
-                file.close()
+                        out = ecg.ecg(signal=ECG4, sampling_rate=1000 , show=False)
+                    except Exception as e:
+                        print "Biosppy Processing Exception in ecg.ecg for participant: " , participant , ' in seciton: ' , section , 'Exception recorded: ' , e
+                        print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
+                        file = open(LOGFILE,'a')
+                        writer = csv.writer(file)
+                        writer.writerow([' Biosppy Processing Exception in ecg.ecg for participant: ', participant , 'in section' , section , 'Exception recorded: ', e , 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno) ])
+                        file.close()
+        # Biosppy works really well in ECG processing, it takes the source of the ECG amd identifies the peaks and calculates the heart rates between the peaks.
+        # the output of the ecg.ecg function ( 'out' in this case), contains all the processes output of the ecg.ecg() .
+        # Output columns : ['ts', 'filtered', 'rpeaks', 'templates_ts', 'templates', 'heart_rate_ts', 'heart_rate']
+        # Output is a weird tuple||dict hybrid. Using the as_dict() function makes it a little better, though obviously the best thing to do is just convert to a list.
+        # Using out[-1] , out[-2] we can get the heart rate and the heart rate at which the time was recorded. Keep in mind the time is relative to the start of the interval used in the data subset
+        # and is NOT absolute time.
+        # Also the indices at which the r-peaks occur is given in the r-peaks interval, which is convenient for r-r interval calculation if needed
+        # NOTE : there are 'n+1' r-peaks for every 'n' sample points of heart rate calculated [ out[-1] , out[-2] have n columns, while out[2] has n+1 columns ].
+        if DEBUG==1:    print " The output of the biosppy processing: " , "\n\n\n Output keys : " , out.keys()#, " Output as dict : " , out.as_dict(), '\n\n\n' , len(out[-1]) , '\n\n\n' , len(out[-2]) , 'r-peaks' , len(out[2])
+        if DEBUG==1:    print " The heart rate time is : " , out.as_dict()['heart_rate_ts']
     except Exception as e:
         print "HR Processing Exception Catcher for participant: " , participant , 'Exception recorded: ' , e
         print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
@@ -576,7 +654,7 @@ if __name__ == '__main__':
                     Events = [ 'GoAroundRocks' , 'CurvedRoads' , 'Failure1' , 'HighwayExit' , 'RightTurn1' , 'RightTurn2' , 'PedestrianEvent' , 'TurnRight3' , 'BicycleEvent' , 'TurnRight4' , 'TurnRight5'\
                     , 'RoadObstructionEvent' , 'HighwayEntryEvent' , 'HighwayIslandEvent' ]
                     for event in Events:
-                        if HRPROCESSING == 1:# and participant=='P002':
+                        if HRPROCESSING == 1 and participant=='P002':
                             ProcessingHR(participant, event)
                         ####################################
                         if GSRPROCESSING == 1:# and participant=='P002':
