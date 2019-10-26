@@ -174,7 +174,7 @@ def Resample( time, signal , participant , section , target_fs = 1000.0 , type =
         writer.writerow(['Resampling exception for participant: ', participant , 'in section' , section , 'Exception recorded: ', e , 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno) ])
         file.close()
 #Function to process the ECG data with the biosppy.
-def ProcessingHR(participant, section):
+def ProcessingHR(participant, section , PLOTANDSAVEHRDATA = 1):
     if DEBUG ==0:   print " Processing the HR data for : " , participant,  "in section : " , section
     try:
         # we operate in the example folder in P002, but we no longer have to do this for later iters
@@ -198,16 +198,17 @@ def ProcessingHR(participant, section):
         time_resampled , ECG2_resampled = Resample( time , ECG2 , participant , section , 1000.0 , 'ecg' )
         time_resampled , ECG3_resampled = Resample( time , ECG3 , participant , section , 1000.0 , 'ecg' )
         time_resampled , ECG4_resampled = Resample( time , ECG4 , participant , section , 1000.0 , 'ecg' )
-        # Write the resampled data to a file in case we might need it later
-        file = open( MAINPATH+'/Data/'+participant+ '/' + section + '/HR_resampled.csv' , 'wb')
-        writer = csv.writer(file)
-        writer.writerow( [ 'Time' , 'ECG1' , 'ECG2' , 'ECG3' , 'ECG4' ])
-        for i in range(len(time_resampled)):
-            writer.writerow([ time_resampled[i] , ECG1_resampled[i] , ECG2_resampled[i] , ECG3_resampled[i] , ECG4_resampled[i] ])
-        file.close()
-        # Resampled File written.
-        # MARKER IS NOT WRITTEN TO THE RESAMPLED FILE. ASSUMED NOT NEEDED FOR NOW.
-        ############################################################
+        if PLOTANDSAVEHRDATA ==1:
+            # Write the resampled data to a file in case we might need it later
+            file = open( MAINPATH+'/Data/'+participant+ '/' + section + '/HR_resampled.csv' , 'wb')
+            writer = csv.writer(file)
+            writer.writerow( [ 'Time' , 'ECG1' , 'ECG2' , 'ECG3' , 'ECG4' ])
+            for i in range(len(time_resampled)):
+                writer.writerow([ time_resampled[i] , ECG1_resampled[i] , ECG2_resampled[i] , ECG3_resampled[i] , ECG4_resampled[i] ])
+            file.close()
+            # Resampled File written.
+            # MARKER IS NOT WRITTEN TO THE RESAMPLED FILE. ASSUMED NOT NEEDED FOR NOW.
+            ############################################################
         # Biosppy calculates the ecg data based on the new resampled
         try:
             out = ecg.ecg(signal=ECG1, sampling_rate=1000 , show=False)
@@ -247,30 +248,73 @@ def ProcessingHR(participant, section):
         rpeaks = out.as_dict()['rpeaks']
         heartrate_ts = out.as_dict()['heart_rate_ts']
         heartrate = out.as_dict()['heart_rate']
-        # We now plot and save the figure for later
-        fig = plt.figure()
-        fig.tight_layout()
-        fig.suptitle( ' This is the output of the Biosppy library for participant ' + participant + ' in ' + section)
-        plt.subplot(2,1,1)
-        plt.title(' Plot of the filtered ECG output of the ecg.ecg function ')
-        plt.plot( ts , filtered , 'r--' , label = 'Filtered ECG signal' , linewidth =0.1)
-        plt.subplots_adjust(hspace = 0.3)# To prevent the overlap pf the text on the 2 subplots
-        verticallines = [ ts[i] for i in rpeaks ]
-        for x in verticallines:
-            plt.axvline( x, linewidth = '1')
-        plt.xlabel( 'Time (Ts output of ecg.ecg() in sec)')
-        plt.ylabel( ' Filtered ECG signal (output of ecg.ecg()) ')
-        plt.legend(loc = 'upper right')
-        plt.subplot(2,1,2)
-        plt.title( ' Plot of the resultant heart rate ')
-        plt.plot( heartrate_ts , heartrate , 'g--' , label = 'Instantaneous output heart rate (beats per min)' , linewidth = 0.1 )
-        #plt.subplots_adjust(hspace = 1)
-        plt.xlabel( 'Time (Heartrate_ts output of ecg.ecg() in sec)')
-        plt.ylabel( ' Output Heart rate (heart_rate output of ecg.ecg()) ')
-        plt.legend(loc = 'upper right')
-        plt.savefig( MAINPATH+'/Data/'+participant+'/' + section + '/FilteredECGSignal.pdf', bbox_inches = 'tight', dpi=900 , quality = 100)
-        plt.close()
-        #Plotted and saved.
+        if PLOTANDSAVEHRDATA == 1:
+            # We now plot and save the figure for later
+            fig = plt.figure()
+            fig.tight_layout()
+            fig.suptitle( ' This is the output of the Biosppy library for participant ' + participant + ' in ' + section)
+            plt.subplot(2,1,1)
+            plt.title(' Plot of the filtered ECG output of the ecg.ecg function ')
+            plt.plot( ts , filtered , 'r--' , label = 'Filtered ECG signal' , linewidth =0.1)
+            plt.subplots_adjust(hspace = 0.3)# To prevent the overlap pf the text on the 2 subplots
+            verticallines = [ ts[i] for i in rpeaks ]
+            for x in verticallines:
+                plt.axvline( x, linewidth = '1')
+            plt.xlabel( 'Time (Ts output of ecg.ecg() in sec)')
+            plt.ylabel( ' Filtered ECG signal (output of ecg.ecg()) ')
+            plt.legend(loc = 'upper right')
+            plt.subplot(2,1,2)
+            plt.title( ' Plot of the resultant heart rate ')
+            plt.plot( heartrate_ts , heartrate , 'g--' , label = 'Instantaneous output heart rate (beats per min)' , linewidth = 0.1 )
+            #plt.subplots_adjust(hspace = 1)
+            plt.xlabel( 'Time (Heartrate_ts output of ecg.ecg() in sec)')
+            plt.ylabel( ' Output Heart rate (heart_rate output of ecg.ecg()) ')
+            plt.legend(loc = 'upper right')
+            plt.savefig( MAINPATH+'/Data/'+participant+'/' + section + '/FilteredECGSignal.pdf', bbox_inches = 'tight', dpi=900 , quality = 100)
+            plt.close()
+            #Plotted and saved.
+            # We can calculate the IBI from the rpeaks and the ts.
+            IBI = []# The interbeat interval calculated from the rpeaks
+            IBI_ts =[]# The r
+            for i, peak in enumerate(rpeaks):
+                if i>0:
+                    IBI.append( ts[rpeaks[i]] - ts[rpeaks[i-1]] )
+                    IBI_ts.append( ts[rpeaks[i]] )
+            # We need to save the entire output
+            file = open(MAINPATH+'/Data/'+participant+'/' + section + '/ECGOuputData.csv' , 'wb')
+            writer = csv.writer(file)
+            writer.writerow(['ts', 'filtered', 'rpeaks', 'heart_rate_ts', 'heart_rate' , 'IBI_ts' , 'IBI'])#Header
+            #Write each row as we simultaneously assemble them
+            for i in range(len(ts)):
+                outputrow = []
+                outputrow.append(ts[i])
+                try:
+                    outputrow.append(filtered[i])
+                except:
+                    outputrow.append(np.nan)
+                try:
+                    outputrow.append(rpeaks[i])
+                except:
+                    outputrow.append(np.nan)
+                try:
+                    outputrow.append(heartrate_ts[i])
+                except:
+                    outputrow.append(np.nan)
+                try:
+                    outputrow.append(heartrate[i])
+                except:
+                    outputrow.append(np.nan)
+                try:
+                    outputrow.append(IBI_ts[i])
+                except:
+                    outputrow.append(np.nan)
+                try:
+                    outputrow.append(IBI[i])
+                except:
+                    outputrow.append(np.nan)
+                writer.writerow(outputrow)
+            file.close()
+            #Output Written and closed
     except Exception as e:
         print "HR Processing Exception Catcher for participant: " , participant , 'Exception recorded: ' , e
         print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
