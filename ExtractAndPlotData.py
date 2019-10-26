@@ -48,13 +48,13 @@ SEGMENTDATA = 0#This is to cut the data into windows for all the data in the stu
 GSRSEGMENTATION = 0# This is the subsegment for GSR data segmentation in the SEGMENTDATA section
 HRSEGMENTATION = 0# This is the subsegment for HR data segmentation in the SEGMENTDATA section
 PPGSEGMENTATION = 0# This is the subsection for PPG data separation in the SEGMENTDATA section
-DRIVESEGMENTATION = 1# This is the subsection for DRIVE sata separation in the SEGMENTDATA section
+DRIVESEGMENTATION = 0# This is the subsection for DRIVE sata separation in the SEGMENTDATA section
 SIGNALPROCESSING = 1# This is the flag to signal the
-HRPROCESSING = 1#This is to process the HR Data only
+HRPROCESSING = 0#This is to process the HR Data only
 BIOSPPYVSHEARTPY = 0# This flag is to determine if we want to use biosppy or heartpy ( 0 - biosppy vs 1 - heartpy)
-GSRPROCESSING = 0#This is to process the GSR Data only
+GSRPROCESSING = 1#This is to process the GSR Data only
 PPGPROCESSING =0# This is to process the PPG Data only
-BACKUPDATA = 0#This is to backup files that are important or are needed for later.
+BACKUPDATA = 1#This is to backup files that are important or are needed for later.
 REMOVEFILE = 0# We are using this marker to remove a file with the same name across all participatns in similar locations.
 #The 3 categories are defined here. Check here before adding the
 #We use this function as a key to sorting the list of folders (participants).
@@ -323,26 +323,96 @@ def ProcessingHR(participant, section , PLOTANDSAVEHRDATA = 1):
         writer.writerow([' HR Processing Function Exception Caught for participant: ', participant , 'Exception recorded: ', e , 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno) ])
         file.close()
 #Function to analyze the GSR data with biosppy eda function
-def ProcessingGSR(participant, section):
-    print " Processing the GSR data for : ", participant
+def ProcessingGSR(participant, section , PLOTANDSAVEGSRDATA=1 ):
     try:
+        print " Processing the GSR data for : ", participant , ' in section : ' , section
         #Opening the GSR File. For now, we operate in the Example file for now
-        file = open(MAINPATH+'/Data/'+participant+'/Example/GSR.csv' , 'r')
+        file = open(MAINPATH+'/Data/'+participant+'/' +section + '/GSR.csv' , 'r')
         reader = csv.reader(file)
         header = next(reader)
         data = list (reader)
         file.close()
         # Loading the data
-        time = [ float(row[2]) for row in data[100:50000] ]
-        gsr = [ float(row[4]) for row in data[100:50000] ]
-        # We need to calculate sampling rates here as well
-        out = eda.eda(signal=gsr , sampling_rate=1024 , show=True , min_amplitude=0.1)
-        print " The output for the GSR file is : " , out.as_dict() ,'\n\n\n' , out.keys()
-        # The output of the EDA function is similar to the output of the ecg function
+        time = [ float(row[0]) for row in data ]
+        gsr = [ float(row[2]) for row in data ]
+        # We don't need to recalculate the sampling frequency since the time columns is the same across all participants.
+        # We set the sampling frequency to 512 Hz
+        #fs = CalculateSamplingRate( time , participant , section )
+        time_resampled , gsr_resampled = Resample(time , gsr , participant , section , target_fs = 1000.0 , type = 'gsr')
+        if PLOTANDSAVEGSRDATA == 1:
+            #Saving the resampled file.
+            file = open( MAINPATH+'/Data/'+participant+'/' +section + '/GSR_resampled.csv' , 'wb' )
+            writer = csv.writer(file)
+            writer.writerow(['Time' , 'GSR'])
+            for i in range(len(time_resampled)):
+                writer.writerow([ time_resampled[i] , gsr_resampled[i] ])
+            file.close()
+        # Next we use the eda.eda function from biosspy
+        out = eda.eda(signal=gsr_resampled , sampling_rate=100 , show=False , min_amplitude=0.5)
+        # ADJUST min_amplitude FOR EACH PARTICIPANT
         # The lists included are:  ['ts', 'filtered', 'onsets', 'peaks', 'amplitudes']
-        # The filtered GSR is included in the 2 column and the onsets , peaks contains the index of the SCR onsets(index) and peak values (amplitude).
-        # The best way to analyze the data when we mark the data is to to identify the onset, time to the onset , and the peak amplitude
-        # It is in the same tuple form as the ecg output. But this can work to out ad
+        # ts -> Time starting at 0 of the resampled time. (It's virtually the same)
+        # filtered -> Filtered GSR signal.
+        # onsets -> onset contains the indices of the ts array at which there are onsets marked
+        # peaks -> peaks contains the indices of the ts array at which the peaks are recorded.
+        if DEBUG==1:    print " The keys in output for the GSR file is : " , out.keys()
+        if DEBUG==1:    print " The time samples in the resampled list and the output of the eda.eda list are: " , time_resampled[0:10] , '\n\n' , out.as_dict()['ts'][0:10]
+        #Separating out the data
+        ts = list(out.as_dict()['ts'])
+        filtered = list(out.as_dict()['filtered'])
+        onsets = list(out.as_dict()['onsets'])
+        peaks = list(out.as_dict()['peaks'])
+        amplitudes = list(out.as_dict()['amplitudes'])
+        # Saving and plotting the data
+        if PLOTANDSAVEGSRDATA == 1:
+            fig = plt.figure()
+            fig.tight_layout()
+            fig.suptitle( ' This is the output of the Biosppy library for participant ' + participant + ' in ' + section)
+            ax1 = plt.subplot(2,1,1)
+            ax1.set_title(' Plot of the filtered GSR output of the eda.eda function ')
+            ax1.plot( ts , filtered , 'r--' , label = 'Filtered EDA signal' , linewidth =0.15)
+            plt.subplots_adjust(hspace = 0.3)# To prevent the overlap pf the text on the 2 subplots
+            verticallines = [ ts[i] for i in peaks ]
+            for x in verticallines:
+                ax1.axvline( x, linewidth = '1')
+            ax1.set_xlabel( 'Time (Ts output of eda.eda() in sec)')
+            ax1.set_ylabel( ' Filtered EDA signal (output of eda.eda()) ')
+            ax1.legend(loc = 'upper right')
+            ax2 = plt.subplot(2,1,2 , sharex =ax1)
+            ax2.set_title( ' Plot of the amplitude of the peaks in the GSR signal. ')
+            peak_ts =[ ts[i] for i in peaks ]
+            temp = amplitudes
+            ax2.plot( peak_ts , temp , 'gs' , label = 'Amplitude of SCR rise')
+            ax2.set_xlabel( 'Time of peaks (Derived from ts output of eda.eda() in sec)')
+            ax2.set_ylabel( ' SCR Rise in Amplitude (output of eda.eda()) ')
+            ax2.legend(loc = 'upper right')
+            plt.savefig( MAINPATH+'/Data/'+participant+'/' + section + '/FilteredGSRSignal.pdf', bbox_inches = 'tight', dpi=900 , quality = 100)
+            plt.close()
+            # Plots are done. Moving on to saving the data.
+            file = open( MAINPATH+'/Data/'+participant+'/'+section+'/GSROutputData.csv', 'wb')
+            writer = csv.writer(file)
+            writer.writerow(['Time' , 'Filtered GSR' , 'Onsets' , 'Peaks' , 'Amplitude'])
+            for i in range(len(ts)):
+                outputrow =[]
+                outputrow.append(ts[i])
+                try:
+                    outputrow.append(filtered[i])
+                except:
+                    outputrow.append(np.nan)
+                try:
+                    outputrow.append(onsets[i])
+                except:
+                    outputrow.append(np.nan)
+                try:
+                    outputrow.append(peaks[i])
+                except:
+                    outputrow.append(np.nan)
+                try:
+                    outputrow.append(amplitudes[i])
+                except:
+                    outputrow.append(np.nan)
+                writer.writerow(outputrow)
+            file.close()
     except Exception as e:
         print "HR Processing Exception Catcher for participant: " , participant , 'Exception recorded: ' , e
         print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
@@ -748,10 +818,10 @@ if __name__ == '__main__':
                     , 'RoadObstructionEvent' , 'HighwayEntryEvent' , 'HighwayIslandEvent' ]
                     for event in Events:
                         if HRPROCESSING == 1:# and participant=='P002':
-                            ProcessingHR(participant, event)
+                            ProcessingHR(participant, event )
                         ####################################
                         if GSRPROCESSING == 1:# and participant=='P002':
-                            ProcessingGSR(participant, event)
+                            ProcessingGSR(participant, event )
                         ####################################
                         if PPGPROCESSING == 1:# and participant=='P002':
                             ProcessingPPG(participant, event)
@@ -768,7 +838,8 @@ if __name__ == '__main__':
                 ##################################################################################################
                 ##################################################################################################
                 if BACKUPDATA == 1:
-                    grouplist = ['MarkerPlot.pdf' , 'FilteredMarkers.pdf' , 'MARKERS_SHORT.csv' ]
+                    # Need to find a way to back up the files in the individual sections
+                    grouplist = ['MarkerPlot.pdf' , 'FilteredMarkers.pdf' , 'MARKERS_SHORT.csv']
                     for item in grouplist:
                         if os.path.exists(MAINPATH+'/Data/'+participant+'/'+item):
                             shutil.copy(MAINPATH+'/Data/'+participant+'/'+item , MAINPATH+'/AuxillaryInformation/BackupofImportantData/' + participant+item)#Adding the participant name to the item name before
