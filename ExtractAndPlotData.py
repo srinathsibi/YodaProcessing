@@ -51,10 +51,9 @@ PPGSEGMENTATION = 0# This is the subsection for PPG data separation in the SEGME
 DRIVESEGMENTATION = 0# This is the subsection for DRIVE sata separation in the SEGMENTDATA section
 SIGNALPROCESSING = 1# This is the flag to signal the
 HRPROCESSING = 0#This is to process the HR Data only
-BIOSPPYVSHEARTPY = 0# This flag is to determine if we want to use biosppy or heartpy ( 0 - biosppy vs 1 - heartpy)
-GSRPROCESSING = 1#This is to process the GSR Data only
-PPGPROCESSING =0# This is to process the PPG Data only
-BACKUPDATA = 1#This is to backup files that are important or are needed for later.
+GSRPROCESSING = 0#This is to process the GSR Data only
+PPGPROCESSING =1# This is to process the PPG Data only
+BACKUPDATA = 0#This is to backup files that are important or are needed for later.
 REMOVEFILE = 0# We are using this marker to remove a file with the same name across all participatns in similar locations.
 #The 3 categories are defined here. Check here before adding the
 #We use this function as a key to sorting the list of folders (participants).
@@ -323,7 +322,7 @@ def ProcessingHR(participant, section , PLOTANDSAVEHRDATA = 1):
         writer.writerow([' HR Processing Function Exception Caught for participant: ', participant , 'Exception recorded: ', e , 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno) ])
         file.close()
 #Function to analyze the GSR data with biosppy eda function
-def ProcessingGSR(participant, section , PLOTANDSAVEGSRDATA=1 ):
+def ProcessingGSR(participant, section , GSR_MIN_THRESHOLD=0.5 , PLOTANDSAVEGSRDATA=1 ):
     try:
         print " Processing the GSR data for : ", participant , ' in section : ' , section
         #Opening the GSR File. For now, we operate in the Example file for now
@@ -348,7 +347,7 @@ def ProcessingGSR(participant, section , PLOTANDSAVEGSRDATA=1 ):
                 writer.writerow([ time_resampled[i] , gsr_resampled[i] ])
             file.close()
         # Next we use the eda.eda function from biosspy
-        out = eda.eda(signal=gsr_resampled , sampling_rate=100 , show=False , min_amplitude=0.5)
+        out = eda.eda(signal=gsr_resampled , sampling_rate=100 , show=False , min_amplitude=GSR_MIN_THRESHOLD)
         # ADJUST min_amplitude FOR EACH PARTICIPANT
         # The lists included are:  ['ts', 'filtered', 'onsets', 'peaks', 'amplitudes']
         # ts -> Time starting at 0 of the resampled time. (It's virtually the same)
@@ -414,16 +413,52 @@ def ProcessingGSR(participant, section , PLOTANDSAVEGSRDATA=1 ):
                 writer.writerow(outputrow)
             file.close()
     except Exception as e:
-        print "HR Processing Exception Catcher for participant: " , participant , 'Exception recorded: ' , e
+        print "HR Processing Exception Catcher for participant: " , participant , 'in section:', section , 'Exception recorded: ' , e
         print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
         file = open(LOGFILE,'a')
         writer = csv.writer(file)
-        writer.writerow([' HR Processing Function Exception Caught for participant: ', participant , 'Exception recorded: ', e , 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno) ])
+        writer.writerow([' HR Processing Function Exception Caught for participant: ', participant , 'in section:', section , 'Exception recorded:', e , 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno) ])
         file.close()
 # Function to analyze the PPG data. This is handwritten since biosppy doesn't have functions for this. A
-#The time converter from iMotions data. Use the column Timestamp (col 10) from the iMotions file.
 def ProcessingPPG(participant, section):
-    if DEBUG==1:    print " Processing the PPG values for participant " , participant , " in section " , section
+    try:
+        print " Processing the PPG values for participant " , participant , " in section " , section
+        sectionpath = MAINPATH+'/Data/'+participant+'/' +section + '/'
+        #load data
+        file = open(sectionpath+'PPG.csv','r')
+        reader = csv.reader(file)
+        ignore = next(reader)
+        data = list( reader )
+        file.close()
+        #Load into individual data streams
+        time = [ float(row[0]) for row in data ]
+        marker = [ float(row[1]) for row in data ]
+        ppg = [ float(row[2]) for row in data ]
+        ibi = [ float(row[3]) for row in data ]
+        # First eliminate the bad data in the IBI
+        for i in range(len(ibi)):
+            if ibi[i] == -1:
+                ibi[i] = np.nan
+        # No need to calculate the sampling frequency.
+        # We resample the IBI and the PPG HR data
+        time_resampled , ppg_resampled = Resample(time , ppg , participant , section , target_fs = 1000.0 , type ='ppg')
+        time_resampled , ibi_resampled = Resample(time , ibi , participant , section , target_fs = 1000.0 , type = 'ppg')
+        # ppg data resampled
+        #fig = plt.figure()
+        #plt.subplot(2,1,1)
+        #plt.plot(time_resampled , ppg_resampled , 'b-' , linewidth=0.1)
+        #plt.subplot(2,1,2)
+        #plt.plot(time_resampled , ibi_resampled , 'r-' , linewidth = 0.1)
+        #plt.show()
+        # 
+    except Exception as e:
+        print "PPG Processing Exception Catcher for participant: " , participant , 'in section:', section , 'Exception recorded: ' , e
+        print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
+        file = open(LOGFILE,'a')
+        writer = csv.writer(file)
+        writer.writerow([' PPG Processing Function Exception Caught for participant: ', participant , 'in section:' , section ,  'Exception recorded:', e , 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno) ])
+        file.close()
+#The time converter from iMotions data. Use the column Timestamp (col 10) from the iMotions file.
 def iMotionsTimeConverter(inputcode):
     decimal = float(inputcode%1000)/1000
     inputcode = (inputcode - 1000*decimal)/1000
@@ -821,9 +856,9 @@ if __name__ == '__main__':
                             ProcessingHR(participant, event )
                         ####################################
                         if GSRPROCESSING == 1:# and participant=='P002':
-                            ProcessingGSR(participant, event )
+                            ProcessingGSR(participant, event , GSR_MIN_THRESHOLD = 0.5)
                         ####################################
-                        if PPGPROCESSING == 1:# and participant=='P002':
+                        if PPGPROCESSING == 1 and participant=='P002':
                             ProcessingPPG(participant, event)
                         # We ignore the Drive Data for later
                 ##################################################################################################
