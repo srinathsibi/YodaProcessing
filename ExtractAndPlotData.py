@@ -213,16 +213,16 @@ def ProcessingHR(participant, section , PLOTANDSAVEHRDATA = 1):
             ############################################################
         # Biosppy calculates the ecg data based on the new resampled
         try:
-            out = ecg.ecg(signal=ECG1, sampling_rate=1000 , show=False)
+            out = ecg.ecg(signal=ECG1_resampled, sampling_rate=1000 , show=False)
         except:
             try:
-                out = ecg.ecg(signal=ECG2, sampling_rate=1000 , show=False)
+                out = ecg.ecg(signal=ECG2_resampled, sampling_rate=1000 , show=False)
             except:
                 try:
-                    out = ecg.ecg(signal=ECG3, sampling_rate=1000 , show=False)
+                    out = ecg.ecg(signal=ECG3_resampled, sampling_rate=1000 , show=False)
                 except:
                     try:
-                        out = ecg.ecg(signal=ECG4, sampling_rate=1000 , show=False)
+                        out = ecg.ecg(signal=ECG4_resampled, sampling_rate=1000 , show=False)
                     except Exception as e:
                         print "Biosppy Processing Exception in ecg.ecg for participant: " , participant , ' in seciton: ' , section , 'Exception recorded: ' , e
                         print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
@@ -258,6 +258,7 @@ def ProcessingHR(participant, section , PLOTANDSAVEHRDATA = 1):
             plt.subplot(2,1,1)
             plt.title(' Plot of the filtered ECG output of the ecg.ecg function ')
             plt.plot( ts , filtered , 'r--' , label = 'Filtered ECG signal' , linewidth =0.1)
+            plt.grid(True)
             plt.subplots_adjust(hspace = 0.3)# To prevent the overlap pf the text on the 2 subplots
             verticallines = [ ts[i] for i in rpeaks ]
             for x in verticallines:
@@ -268,6 +269,7 @@ def ProcessingHR(participant, section , PLOTANDSAVEHRDATA = 1):
             plt.subplot(2,1,2)
             plt.title( ' Plot of the resultant heart rate ')
             plt.plot( heartrate_ts , heartrate , 'g--' , label = 'Instantaneous output heart rate (beats per min)' , linewidth = 0.1 )
+            plt.grid(True)
             #plt.subplots_adjust(hspace = 1)
             plt.xlabel( 'Time (Heartrate_ts output of ecg.ecg() in sec)')
             plt.ylabel( ' Output Heart rate (heart_rate output of ecg.ecg()) ')
@@ -350,7 +352,7 @@ def ProcessingGSR(participant, section , GSR_MIN_THRESHOLD=0.5 , PLOTANDSAVEGSRD
                 writer.writerow([ time_resampled[i] , gsr_resampled[i] ])
             file.close()
         # Next we use the eda.eda function from biosspy
-        out = eda.eda(signal=gsr_resampled , sampling_rate=100 , show=False , min_amplitude=GSR_MIN_THRESHOLD)
+        out = eda.eda(signal=gsr_resampled , sampling_rate=1000 , show=False , min_amplitude=GSR_MIN_THRESHOLD)
         # ADJUST min_amplitude FOR EACH PARTICIPANT
         # The lists included are:  ['ts', 'filtered', 'onsets', 'peaks', 'amplitudes']
         # ts -> Time starting at 0 of the resampled time. (It's virtually the same)
@@ -373,6 +375,7 @@ def ProcessingGSR(participant, section , GSR_MIN_THRESHOLD=0.5 , PLOTANDSAVEGSRD
             ax1 = plt.subplot(2,1,1)
             ax1.set_title(' Plot of the filtered GSR output of the eda.eda function ')
             ax1.plot( ts , filtered , 'r--' , label = 'Filtered EDA signal' , linewidth =0.15)
+            plt.grid(True)
             plt.subplots_adjust(hspace = 0.3)# To prevent the overlap pf the text on the 2 subplots
             verticallines = [ ts[i] for i in peaks ]
             for x in verticallines:
@@ -385,6 +388,7 @@ def ProcessingGSR(participant, section , GSR_MIN_THRESHOLD=0.5 , PLOTANDSAVEGSRD
             peak_ts =[ ts[i] for i in peaks ]
             temp = amplitudes
             ax2.plot( peak_ts , temp , 'gs' , label = 'Amplitude of SCR rise')
+            plt.grid(True)
             ax2.set_xlabel( 'Time of peaks (Derived from ts output of eda.eda() in sec)')
             ax2.set_ylabel( ' SCR Rise in Amplitude (output of eda.eda()) ')
             ax2.legend(loc = 'upper right')
@@ -462,11 +466,13 @@ def ProcessingPPG(participant, section , PLOTANDSAVEPPGDATA=1):
             plt.subplot(2,1,1)
             plt.subplots_adjust(hspace = 0.3)
             plt.plot(time_resampled , ppg_resampled , 'b-' , label = 'Raw PPG Signal' , linewidth=0.1)
+            plt.grid(True)
             plt.xlabel('Time(resampled in sec)')
             plt.ylabel('PPG Signal resampled')
             plt.legend(loc = 'upper right')
             plt.subplot(2,1,2)
             plt.plot(ibi_ts , ibi_resampled , 'rs' , label ='IBI' ,  linewidth = 0.1)
+            plt.grid(True)
             plt.xlabel('Time( Only time points from the ibi_ts )')
             plt.ylabel('IBI points of data ')
             plt.savefig( sectionpath + 'FilteredPPGSignal.pdf', bbox_inches = 'tight', dpi=900 , quality = 100)
