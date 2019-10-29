@@ -62,11 +62,11 @@ P022,,,,,P060,
 P024,,,,,P066,
 P032,,,,,P067,
 P042,,,,,P069,
-P046,,,,,P077,
+P046,,,,,P077,Revisit these participant’s data to see what happened in the data. Refer filtered marker for more information.
 P055,,,,,P090,
 P057,,,,,P095,
 P064,,,,,,
-P071,,,,,P047,Revisit this participant’s heart rate signal to process
+P071,,,,,P047,Don’t use this participant’s ECG data or PPG HR data. It’s bad. Might be because of poor electrode contact
 P086,,,,,,
 P087,,,,,,
 P089,,,,,,

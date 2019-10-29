@@ -43,17 +43,19 @@ TOPELIMINATION = 100
 READANDEXTRACTINDIVIDUALFILES = 0# This is the flag to make sure that files are read from the start
 MAKEPLOTS = 0#Make the individual plots from the files of all the data streams
 PROCESSMARKERS = 0#Analyze the markers and make abridged version of the markers file for event processing
-REWRITEABRIDGEDMARKERFILE = 0#This Flag is to rewrite the marker file.
+####################################
+REWRITEABRIDGEDMARKERFILE = 0#NEVER SET THIS TO ONE. This Flag is to rewrite the short marker file.
+#####################################
 SEGMENTDATA = 0#This is to cut the data into windows for all the data in the study.
 GSRSEGMENTATION = 0# This is the subsegment for GSR data segmentation in the SEGMENTDATA section
 HRSEGMENTATION = 0# This is the subsegment for HR data segmentation in the SEGMENTDATA section
 PPGSEGMENTATION = 0# This is the subsection for PPG data separation in the SEGMENTDATA section
 DRIVESEGMENTATION = 0# This is the subsection for DRIVE sata separation in the SEGMENTDATA section
-SIGNALPROCESSING = 1# This is the flag to signal the
+SIGNALPROCESSING = 0# This is the flag to signal the
 HRPROCESSING = 0#This is to process the HR Data only
 GSRPROCESSING = 0#This is to process the GSR Data only
-PPGPROCESSING =1# This is to process the PPG Data only
-BACKUPDATA = 0#This is to backup files that are important or are needed for later.
+PPGPROCESSING =0# This is to process the PPG Data only
+BACKUPDATA = 1#This is to backup files that are important or are needed for later.
 REMOVEFILE = 0# We are using this marker to remove a file with the same name across all participatns in similar locations.
 #The 3 categories are defined here. Check here before adding the
 #We use this function as a key to sorting the list of folders (participants).
@@ -420,7 +422,7 @@ def ProcessingGSR(participant, section , GSR_MIN_THRESHOLD=0.5 , PLOTANDSAVEGSRD
         writer.writerow([' HR Processing Function Exception Caught for participant: ', participant , 'in section:', section , 'Exception recorded:', e , 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno) ])
         file.close()
 # Function to analyze the PPG data. This is handwritten since biosppy doesn't have functions for this. A
-def ProcessingPPG(participant, section):
+def ProcessingPPG(participant, section , PLOTANDSAVEPPGDATA=1):
     try:
         print " Processing the PPG values for participant " , participant , " in section " , section
         sectionpath = MAINPATH+'/Data/'+participant+'/' +section + '/'
@@ -442,15 +444,53 @@ def ProcessingPPG(participant, section):
         # No need to calculate the sampling frequency.
         # We resample the IBI and the PPG HR data
         time_resampled , ppg_resampled = Resample(time , ppg , participant , section , target_fs = 1000.0 , type ='ppg')
-        time_resampled , ibi_resampled = Resample(time , ibi , participant , section , target_fs = 1000.0 , type = 'ppg')
-        # ppg data resampled
-        #fig = plt.figure()
-        #plt.subplot(2,1,1)
-        #plt.plot(time_resampled , ppg_resampled , 'b-' , linewidth=0.1)
-        #plt.subplot(2,1,2)
-        #plt.plot(time_resampled , ibi_resampled , 'r-' , linewidth = 0.1)
-        #plt.show()
-        # 
+        #time_resampled , ibi_resampled = Resample(time , ibi , participant , section , target_fs = 1000.0 , type = 'ppg')
+        # We don't resample the ibi data. Instead , we compile a shorter aarray that only has the points that don't have np.nan
+        ibi_ts = []
+        ibi_resampled = []
+        for i in range(len(ibi)):
+            if math.isnan(ibi[i]):
+                pass
+            else:
+                ibi_resampled.append(ibi[i])
+                ibi_ts.append(time[i])
+        if PLOTANDSAVEPPGDATA ==1:
+            # ppg data resampled
+            fig = plt.figure()
+            plt.suptitle( 'Output of the PPG Signal Processing ')
+            plt.subplot(2,1,1)
+            plt.subplots_adjust(hspace = 0.3)
+            plt.plot(time_resampled , ppg_resampled , 'b-' , label = 'Raw PPG Signal' , linewidth=0.1)
+            plt.xlabel('Time(resampled in sec)')
+            plt.ylabel('PPG Signal resampled')
+            plt.legend(loc = 'upper right')
+            plt.subplot(2,1,2)
+            plt.plot(ibi_ts , ibi_resampled , 'rs' , label ='IBI' ,  linewidth = 0.1)
+            plt.xlabel('Time( Only time points from the ibi_ts )')
+            plt.ylabel('IBI points of data ')
+            plt.savefig( sectionpath + 'FilteredPPGSignal.pdf', bbox_inches = 'tight', dpi=900 , quality = 100)
+            plt.close()
+            # We save the data. There is no anlaysis to be done here.
+            file = open(sectionpath+'PPGOutputData.csv' , 'wb')
+            writer = csv.writer(file)
+            writer.writerow(['Time' , 'HeartRate(From PPG)' , 'IBI_ts' , 'IBI'])
+            for i in range(len(time_resampled)):
+                outputrow=[]
+                outputrow.append(time_resampled[i])
+                try:
+                    outputrow.append(ppg_resampled[i])
+                except:
+                    outputrow.append(np.nan)
+                try:
+                    outputrow.append(ibi_ts[i])
+                except:
+                    outputrow.append(np.nan)
+                try:
+                    outputrow.append(ibi_resampled[i])
+                except:
+                    outputrow.append(np.nan)
+                writer.writerow(outputrow)
+            file.close()
     except Exception as e:
         print "PPG Processing Exception Catcher for participant: " , participant , 'in section:', section , 'Exception recorded: ' , e
         print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
@@ -858,7 +898,7 @@ if __name__ == '__main__':
                         if GSRPROCESSING == 1:# and participant=='P002':
                             ProcessingGSR(participant, event , GSR_MIN_THRESHOLD = 0.5)
                         ####################################
-                        if PPGPROCESSING == 1 and participant=='P002':
+                        if PPGPROCESSING == 1:# and participant=='P002':
                             ProcessingPPG(participant, event)
                         # We ignore the Drive Data for later
                 ##################################################################################################
@@ -878,7 +918,7 @@ if __name__ == '__main__':
                     for item in grouplist:
                         if os.path.exists(MAINPATH+'/Data/'+participant+'/'+item):
                             shutil.copy(MAINPATH+'/Data/'+participant+'/'+item , MAINPATH+'/AuxillaryInformation/BackupofImportantData/' + participant+item)#Adding the participant name to the item name before
-                            if DEBUG ==1:   print "File moved ", item
+                            if DEBUG ==0:   print "File moved ", item
                 ##################################################################################################
                 ##################################################################################################
             except Exception as e:
