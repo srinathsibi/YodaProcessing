@@ -46,11 +46,11 @@ PROCESSMARKERS = 1#Analyze the markers and make abridged version of the markers 
 ####################################
 REWRITEABRIDGEDMARKERFILE = 0#NEVER SET THIS TO ONE. This Flag is to rewrite the short marker file.
 #####################################
-SEGMENTDATA = 0#This is to cut the data into windows for all the data in the study.
-GSRSEGMENTATION = 0# This is the subsegment for GSR data segmentation in the SEGMENTDATA section
-HRSEGMENTATION = 0# This is the subsegment for HR data segmentation in the SEGMENTDATA section
-PPGSEGMENTATION = 0# This is the subsection for PPG data separation in the SEGMENTDATA section
-DRIVESEGMENTATION = 0# This is the subsection for DRIVE sata separation in the SEGMENTDATA section
+SEGMENTDATA = 1#This is to cut the data into windows for all the data in the study.
+GSRSEGMENTATION = 1# This is the subsegment for GSR data segmentation in the SEGMENTDATA section
+HRSEGMENTATION = 1# This is the subsegment for HR data segmentation in the SEGMENTDATA section
+PPGSEGMENTATION = 1# This is the subsection for PPG data separation in the SEGMENTDATA section
+DRIVESEGMENTATION = 1# This is the subsection for DRIVE sata separation in the SEGMENTDATA section
 SIGNALPROCESSING = 1# This is the flag to signal the
 HRPROCESSING = 1#This is to process the HR Data only
 GSRPROCESSING = 1#This is to process the GSR Data only
@@ -64,16 +64,17 @@ CAT2 = [ 'P022' , 'P037' , 'P040' , 'P042' , 'P045' , 'P046' , 'P047' , 'P055' ,
 'P076' , 'P077' , 'P085' , 'P086' , 'P087' , 'P088' , 'P089' , 'P090' , 'P090' , 'P093' , 'P094' , 'P095' , 'P096' , 'P097' ,'P098']
 CAT3 = ['P012']
 # Window sizes are defined here :
-GoAroundRocksWiNDOW = 20
-CurvedRoadsWINDOW = 20
-Failure1WINDOW = 20
-HighwayExitWINDOW = 20
-TURNWINDOW = 20
-PedestrianEventWINDOW = 20
-BicycleEventWINDOW = 20
-RoadObstructionEventWINDOW = 20
-HighwayEntryEventWINDOW = 20
-HighwayIslandEventWINDOW = 20
+# First value is the subtraction from event to windowstart and the second value is addition from event to windowend
+GoAroundRocksWiNDOW = [25 , 25]
+CurvedRoadsWINDOW = [32 , 60]
+Failure1WINDOW = [20 , 0]
+HighwayExitWINDOW = [5 , 5]
+TURNWINDOW = [5 , 5]
+PedestrianEventWINDOW = [69 , 30]
+BicycleEventWINDOW = [61 , 0]
+RoadObstructionEventWINDOW = [37 , 0]
+HighwayEntryEventWINDOW = [42, 0]
+HighwayIslandEventWINDOW = [13, 0]
 # Function to return the index of the element nearest to a value
 def find_nearest(array, value):
     ''' Find nearest value is an array '''
@@ -733,6 +734,7 @@ if __name__ == '__main__':
                         file.close()
                         Events = [ 'GoAroundRocks' , 'CurvedRoads' , 'Failure1' , 'HighwayExit' , 'RightTurn1' , 'RightTurn2' , 'PedestrianEvent' , 'TurnRight3' , 'BicycleEvent' , 'TurnRight4' , 'TurnRight5'\
                         , 'RoadObstructionEvent' , 'HighwayEntryEvent' , 'HighwayIslandEvent' ]
+                        # WindowSizes is a list of 14*2 lists. Each element contains 2 values to be added and subtracted to the event time
                         WindowSizes = [ GoAroundRocksWiNDOW , CurvedRoadsWINDOW , Failure1WINDOW , HighwayExitWINDOW , TURNWINDOW , TURNWINDOW , PedestrianEventWINDOW , TURNWINDOW , BicycleEventWINDOW , TURNWINDOW , TURNWINDOW\
                          , RoadObstructionEventWINDOW , HighwayEntryEventWINDOW , HighwayIslandEventWINDOW ]
                         MarkerTimes = []#This is the corresponding times for the Events in the above list
@@ -765,8 +767,8 @@ if __name__ == '__main__':
                             # For every event , we find the index of the element in time, then we subtract and add WindowSizes. Then we use the find_nearest function
                             # to get nearest value's index for the edges of the windows. These indices can then be used to extract the
                             for i,event in enumerate(Events):
-                                windowstart = MarkerTimes[i] - WindowSizes[i]
-                                windowend = MarkerTimes[i] + WindowSizes[i]
+                                windowstart = MarkerTimes[i] - WindowSizes[i][0]
+                                windowend = MarkerTimes[i] + WindowSizes[i][1]
                                 #Now we need to find the index of the windowstart and windowend times in the time list and then seek the corresponding values in the gsr data too
                                 index_Marker = find_nearest( np.asarray(time) , MarkerTimes[i] )
                                 index_windowstart = find_nearest( np.asarray(time) , windowstart )
@@ -796,8 +798,8 @@ if __name__ == '__main__':
                             hr4 = [ float(row[7]) for row in data ]
                             # Data Loaded
                             for i,event in enumerate(Events):
-                                windowstart = MarkerTimes[i] - WindowSizes[i]
-                                windowend = MarkerTimes[i] + WindowSizes[i]
+                                windowstart = MarkerTimes[i] - WindowSizes[i][0]
+                                windowend = MarkerTimes[i] + WindowSizes[i][1]
                                 #Find the indices of the markers and the windows start and window ends
                                 index_Marker = find_nearest( np.asarray(time) , MarkerTimes[i] )
                                 index_windowstart = find_nearest( np.asarray(time) , windowstart )
@@ -824,8 +826,8 @@ if __name__ == '__main__':
                             ibi = [ float(row[5]) for row in data ]
                             # Data loaded
                             for i, event in enumerate(Events):
-                                windowstart = MarkerTimes[i] - WindowSizes[i]
-                                windowend = MarkerTimes[i] + WindowSizes[i]
+                                windowstart = MarkerTimes[i] - WindowSizes[i][0]
+                                windowend = MarkerTimes[i] + WindowSizes[i][1]
                                 # Find the indices of the markers and the window start and the window ends
                                 index_Marker = find_nearest( np.asarray(time) , MarkerTimes[i] )
                                 index_windowend = find_nearest( np.asarray(time) , windowend )
@@ -853,8 +855,8 @@ if __name__ == '__main__':
                             throttle = [ float(row[7]) for row in data ]
                             #Data Loaded
                             for i , event in enumerate(Events):
-                                windowstart = MarkerTimes[i] - WindowSizes[i]
-                                windowend = MarkerTimes[i] + WindowSizes[i]
+                                windowstart = MarkerTimes[i] - WindowSizes[i][0]
+                                windowend = MarkerTimes[i] + WindowSizes[i][1]
                                 #locating the indices
                                 index_Marker = find_nearest(np.asarray(time) , MarkerTimes[i] )
                                 index_windowstart = find_nearest(np.asarray(time) , windowstart )
