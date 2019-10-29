@@ -41,8 +41,8 @@ MAINPATH = os.path.abspath('.')#Always specify absolute path for all path specif
 DEBUG = 0# To print statements for debugging
 TOPELIMINATION = 100
 READANDEXTRACTINDIVIDUALFILES = 0# This is the flag to make sure that files are read from the start
-MAKEPLOTS = 0#Make the individual plots from the files of all the data streams
-PROCESSMARKERS = 0#Analyze the markers and make abridged version of the markers file for event processing
+MAKEPLOTS = 1#Make the individual plots from the files of all the data streams
+PROCESSMARKERS = 1#Analyze the markers and make abridged version of the markers file for event processing
 ####################################
 REWRITEABRIDGEDMARKERFILE = 0#NEVER SET THIS TO ONE. This Flag is to rewrite the short marker file.
 #####################################
@@ -51,11 +51,11 @@ GSRSEGMENTATION = 0# This is the subsegment for GSR data segmentation in the SEG
 HRSEGMENTATION = 0# This is the subsegment for HR data segmentation in the SEGMENTDATA section
 PPGSEGMENTATION = 0# This is the subsection for PPG data separation in the SEGMENTDATA section
 DRIVESEGMENTATION = 0# This is the subsection for DRIVE sata separation in the SEGMENTDATA section
-SIGNALPROCESSING = 0# This is the flag to signal the
-HRPROCESSING = 0#This is to process the HR Data only
-GSRPROCESSING = 0#This is to process the GSR Data only
-PPGPROCESSING =0# This is to process the PPG Data only
-BACKUPDATA = 1#This is to backup files that are important or are needed for later.
+SIGNALPROCESSING = 1# This is the flag to signal the
+HRPROCESSING = 1#This is to process the HR Data only
+GSRPROCESSING = 1#This is to process the GSR Data only
+PPGPROCESSING =1# This is to process the PPG Data only
+BACKUPDATA = 0#This is to backup files that are important or are needed for later.
 REMOVEFILE = 0# We are using this marker to remove a file with the same name across all participatns in similar locations.
 #The 3 categories are defined here. Check here before adding the
 #We use this function as a key to sorting the list of folders (participants).
@@ -870,7 +870,7 @@ if __name__ == '__main__':
                     except Exception as e:
                         print " Exception recorded for participant in the Segmentation process : " , participant , " Error : ", e
                         print  'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
-                        ile = open(LOGFILE, 'a')
+                        file = open(LOGFILE, 'a')
                         writer = csv.writer(file)
                         writer.writerow([' Exception for participant ', participant , 'Exception : ', e , 'on line {}'.format(sys.exc_info()[-1].tb_lineno)])
                         file.close()
