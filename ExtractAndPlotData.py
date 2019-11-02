@@ -40,23 +40,23 @@ LOGFILE = os.path.abspath('.') + '/CurrentOutputFile.csv'#Using one output file 
 MAINPATH = os.path.abspath('.')#Always specify absolute path for all path specification and file specifications
 DEBUG = 0# To print statements for debugging
 TOPELIMINATION = 100
-READANDEXTRACTINDIVIDUALFILES = 1# This is the flag to make sure that files are read from the start
-MAKEPLOTS = 1#Make the individual plots from the files of all the data streams
-PROCESSMARKERS = 1#Analyze the markers and make abridged version of the markers file for event processing
+READANDEXTRACTINDIVIDUALFILES = 0# This is the flag to make sure that files are read from the start
+MAKEPLOTS =0#Make the individual plots from the files of all the data streams
+PROCESSMARKERS = 0#Analyze the markers and make abridged version of the markers file for event processing
 ####################################
 REWRITEABRIDGEDMARKERFILE = 0#NEVER SET THIS TO ONE. This Flag is to rewrite the short marker file.
 #####################################
-SEGMENTDATA = 1#This is to cut the data into windows for all the data in the study.
-GSRSEGMENTATION = 1# This is the subsegment for GSR data segmentation in the SEGMENTDATA section
-HRSEGMENTATION = 1# This is the subsegment for HR data segmentation in the SEGMENTDATA section
-PPGSEGMENTATION = 1# This is the subsection for PPG data separation in the SEGMENTDATA section
-DRIVESEGMENTATION = 1# This is the subsection for DRIVE sata separation in the SEGMENTDATA section
-SIGNALPROCESSING = 1# This is the flag to signal the
+SEGMENTDATA = 0#This is to cut the data into windows for all the data in the study.
+GSRSEGMENTATION = 0# This is the subsegment for GSR data segmentation in the SEGMENTDATA section
+HRSEGMENTATION = 0# This is the subsegment for HR data segmentation in the SEGMENTDATA section
+PPGSEGMENTATION = 0# This is the subsection for PPG data separation in the SEGMENTDATA section
+DRIVESEGMENTATION = 0# This is the subsection for DRIVE sata separation in the SEGMENTDATA section
+SIGNALPROCESSING = 0# This is the flag to signal the
 HRPROCESSING = 0#This is to process the HR Data only
-GSRPROCESSING = 1#This is to process the GSR Data only
-PPGPROCESSING =1# This is to process the PPG Data only
+GSRPROCESSING = 0#This is to process the GSR Data only
+PPGPROCESSING =0# This is to process the PPG Data only
 BACKUPDATA = 1#This is to backup files that are important or are needed for later.
-REMOVEFILE = 1# We are using this marker to remove a file with the same name across all participatns in similar locations.
+REMOVEFILE = 0# We are using this marker to remove a file with the same name across all participatns in similar locations.
 #The 3 categories are defined here. Check here before adding the
 #We use this function as a key to sorting the list of folders (participants).
 CAT1 = [ 'P002', 'P004' , 'P005' , 'P007' , 'P008' , 'P009' , 'P010' , 'P011' , 'P013' , 'P016' , 'P021' , 'P023' , 'P024' , 'P025' , 'P028' , 'P032' ]
@@ -530,7 +530,7 @@ if __name__ == '__main__':
     file.close()
     try:
         #print " The Main Function for the Plotting and Sampling Function"
-        listoffolders =['P0931' , 'P0881' , 'P0842' , 'P0802']# os.listdir(MAINPATH+'/Data/')
+        listoffolders = os.listdir(MAINPATH+'/Data/')
         #Sort the Folders
         listoffolders.sort(key=SortFunc)
         if DEBUG == 1:  print "\nThe list of folder:", listoffolders
@@ -932,8 +932,10 @@ if __name__ == '__main__':
                     grouplist = ['MarkerPlot.pdf' , 'FilteredMarkers.pdf' , 'MARKERS_SHORT.csv']
                     for item in grouplist:
                         if os.path.exists(MAINPATH+'/Data/'+participant+'/'+item):
+                            if os.path.exists(MAINPATH+'/AuxillaryInformation/BackupofImportantData/' + participant+item):#Remove the file in the target location.
+                                os.remove(MAINPATH+'/AuxillaryInformation/BackupofImportantData/' + participant+item)
                             shutil.copy(MAINPATH+'/Data/'+participant+'/'+item , MAINPATH+'/AuxillaryInformation/BackupofImportantData/' + participant+item)#Adding the participant name to the item name before
-                            if DEBUG ==0:   print "File moved ", item
+                            print "File moved ", item
                     #Section level information to backup
                     insectionbackuplist = ['FilteredPPGSignal.pdf' , 'FilteredGSRSignal.pdf' , 'FilteredECGSignal.pdf']
                     Events = [ 'GoAroundRocks' , 'CurvedRoads' , 'Failure1' , 'HighwayExit' , 'RightTurn1' , 'RightTurn2' , 'PedestrianEvent' , 'TurnRight3' , 'BicycleEvent' , 'TurnRight4' , 'TurnRight5'\
@@ -942,7 +944,10 @@ if __name__ == '__main__':
                         sectionpath = MAINPATH+'/Data/'+participant+'/'+event+'/'
                         for item in insectionbackuplist:
                             if os.path.exists(sectionpath+item):
+                                if os.path.exists(MAINPATH+'/AuxillaryInformation/BackupofImportantData/' + participant+event+item):#Remove the file in the target location.
+                                    os.remove(MAINPATH+'/AuxillaryInformation/BackupofImportantData/' + participant+event+item)
                                 shutil.copy(sectionpath+item , MAINPATH+'/AuxillaryInformation/BackupofImportantData/' + participant+event+item)
+                                print "File moved for section",event, "File moved:" , item
                 ##################################################################################################
                 ##################################################################################################
             except Exception as e:
