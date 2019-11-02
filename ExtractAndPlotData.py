@@ -40,7 +40,7 @@ LOGFILE = os.path.abspath('.') + '/CurrentOutputFile.csv'#Using one output file 
 MAINPATH = os.path.abspath('.')#Always specify absolute path for all path specification and file specifications
 DEBUG = 0# To print statements for debugging
 TOPELIMINATION = 100
-READANDEXTRACTINDIVIDUALFILES = 0# This is the flag to make sure that files are read from the start
+READANDEXTRACTINDIVIDUALFILES = 1# This is the flag to make sure that files are read from the start
 MAKEPLOTS = 1#Make the individual plots from the files of all the data streams
 PROCESSMARKERS = 1#Analyze the markers and make abridged version of the markers file for event processing
 ####################################
@@ -52,20 +52,21 @@ HRSEGMENTATION = 1# This is the subsegment for HR data segmentation in the SEGME
 PPGSEGMENTATION = 1# This is the subsection for PPG data separation in the SEGMENTDATA section
 DRIVESEGMENTATION = 1# This is the subsection for DRIVE sata separation in the SEGMENTDATA section
 SIGNALPROCESSING = 1# This is the flag to signal the
-HRPROCESSING = 1#This is to process the HR Data only
+HRPROCESSING = 0#This is to process the HR Data only
 GSRPROCESSING = 1#This is to process the GSR Data only
 PPGPROCESSING =1# This is to process the PPG Data only
-BACKUPDATA = 0#This is to backup files that are important or are needed for later.
-REMOVEFILE = 0# We are using this marker to remove a file with the same name across all participatns in similar locations.
+BACKUPDATA = 1#This is to backup files that are important or are needed for later.
+REMOVEFILE = 1# We are using this marker to remove a file with the same name across all participatns in similar locations.
 #The 3 categories are defined here. Check here before adding the
 #We use this function as a key to sorting the list of folders (participants).
 CAT1 = [ 'P002', 'P004' , 'P005' , 'P007' , 'P008' , 'P009' , 'P010' , 'P011' , 'P013' , 'P016' , 'P021' , 'P023' , 'P024' , 'P025' , 'P028' , 'P032' ]
 CAT2 = [ 'P022' , 'P037' , 'P040' , 'P042' , 'P045' , 'P046' , 'P047' , 'P055' , 'P057' , 'P058' , 'P060' , 'P064' , 'P066' , 'P067' , 'P069' , 'P071' , \
-'P076' , 'P077' , 'P085' , 'P086' , 'P087' , 'P088' , 'P089' , 'P090' , 'P090' , 'P093' , 'P094' , 'P095' , 'P096' , 'P097' ,'P098']
+'P076' , 'P077' , 'P085' , 'P086' , 'P087' , 'P088' , 'P0881' , 'P089' , 'P090' , 'P090' , 'P093' , 'P0931' , 'P094' , 'P095' , 'P096' , 'P097' ,'P098']
 CAT3 = ['P012']
+CAT4 = ['P0802' , 'P0842']
 # Window sizes are defined here :
 # First value is the subtraction from event to windowstart and the second value is addition from event to windowend
-GoAroundRocksWiNDOW = [25 , 25]
+GoAroundRocksWINDOW = [25 , 25]
 CurvedRoadsWINDOW = [32 , 60]
 Failure1WINDOW = [20 , 0]
 HighwayExitWINDOW = [5 , 5]
@@ -213,16 +214,16 @@ def ProcessingHR(participant, section , PLOTANDSAVEHRDATA = 1):
             ############################################################
         # Biosppy calculates the ecg data based on the new resampled
         try:
-            out = ecg.ecg(signal=ECG1_resampled, sampling_rate=1000 , show=False)
+            out = ecg.ecg(signal=ECG1_resampled, sampling_rate=1000.0 , show=False)
         except:
             try:
-                out = ecg.ecg(signal=ECG2_resampled, sampling_rate=1000 , show=False)
+                out = ecg.ecg(signal=ECG2_resampled, sampling_rate=1000.0 , show=False)
             except:
                 try:
-                    out = ecg.ecg(signal=ECG3_resampled, sampling_rate=1000 , show=False)
+                    out = ecg.ecg(signal=ECG3_resampled, sampling_rate=1000.0 , show=False)
                 except:
                     try:
-                        out = ecg.ecg(signal=ECG4_resampled, sampling_rate=1000 , show=False)
+                        out = ecg.ecg(signal=ECG4_resampled, sampling_rate=1000.0 , show=False)
                     except Exception as e:
                         print "Biosppy Processing Exception in ecg.ecg for participant: " , participant , ' in seciton: ' , section , 'Exception recorded: ' , e
                         print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
@@ -258,7 +259,7 @@ def ProcessingHR(participant, section , PLOTANDSAVEHRDATA = 1):
             plt.subplot(2,1,1)
             plt.title(' Plot of the filtered ECG output of the ecg.ecg function ')
             plt.plot( ts , filtered , 'r--' , label = 'Filtered ECG signal' , linewidth =0.1)
-            plt.grid(True)
+            plt.grid(True , linestyle='-', linewidth=0.1)
             plt.subplots_adjust(hspace = 0.3)# To prevent the overlap pf the text on the 2 subplots
             verticallines = [ ts[i] for i in rpeaks ]
             for x in verticallines:
@@ -269,7 +270,7 @@ def ProcessingHR(participant, section , PLOTANDSAVEHRDATA = 1):
             plt.subplot(2,1,2)
             plt.title( ' Plot of the resultant heart rate ')
             plt.plot( heartrate_ts , heartrate , 'g--' , label = 'Instantaneous output heart rate (beats per min)' , linewidth = 0.1 )
-            plt.grid(True)
+            plt.grid(True , linestyle='-', linewidth=0.1)
             #plt.subplots_adjust(hspace = 1)
             plt.xlabel( 'Time (Heartrate_ts output of ecg.ecg() in sec)')
             plt.ylabel( ' Output Heart rate (heart_rate output of ecg.ecg()) ')
@@ -327,7 +328,7 @@ def ProcessingHR(participant, section , PLOTANDSAVEHRDATA = 1):
         writer.writerow([' HR Processing Function Exception Caught for participant: ', participant , 'Exception recorded: ', e , 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno) ])
         file.close()
 #Function to analyze the GSR data with biosppy eda function
-def ProcessingGSR(participant, section , GSR_MIN_THRESHOLD=0.5 , PLOTANDSAVEGSRDATA=1 ):
+def ProcessingGSR(participant, section , GSR_MIN_THRESHOLD=0.1 , PLOTANDSAVEGSRDATA=1 ):
     try:
         print " Processing the GSR data for : ", participant , ' in section : ' , section
         #Opening the GSR File. For now, we operate in the Example file for now
@@ -352,7 +353,10 @@ def ProcessingGSR(participant, section , GSR_MIN_THRESHOLD=0.5 , PLOTANDSAVEGSRD
                 writer.writerow([ time_resampled[i] , gsr_resampled[i] ])
             file.close()
         # Next we use the eda.eda function from biosspy
-        out = eda.eda(signal=gsr_resampled , sampling_rate=1000 , show=False , min_amplitude=GSR_MIN_THRESHOLD)
+        out = eda.eda( signal=np.asarray(gsr_resampled) , sampling_rate=100 , show=False , min_amplitude=GSR_MIN_THRESHOLD )# THIS METHOD IS CAUSING SOME PROBLEMS , SO WE USE SAMPLING RATE = 100
+        # WE CORRECT IT LATER IN THE ts ARRAY EVALUATION
+        #out = eda.basic_scr(signal=np.asarray(gsr_resampled) , sampling_rate=1000.0)
+        #out = eda.kbk_scr(signal=gsr_resampled , sampling_rate=1000.0)
         # ADJUST min_amplitude FOR EACH PARTICIPANT
         # The lists included are:  ['ts', 'filtered', 'onsets', 'peaks', 'amplitudes']
         # ts -> Time starting at 0 of the resampled time. (It's virtually the same)
@@ -362,7 +366,8 @@ def ProcessingGSR(participant, section , GSR_MIN_THRESHOLD=0.5 , PLOTANDSAVEGSRD
         if DEBUG==1:    print " The keys in output for the GSR file is : " , out.keys()
         if DEBUG==1:    print " The time samples in the resampled list and the output of the eda.eda list are: " , time_resampled[0:10] , '\n\n' , out.as_dict()['ts'][0:10]
         #Separating out the data
-        ts = list(out.as_dict()['ts'])
+        ts_temp = list(out.as_dict()['ts'])
+        ts = [ ts_temp[i]/10 for i in range(len(ts_temp)) ]
         filtered = list(out.as_dict()['filtered'])
         onsets = list(out.as_dict()['onsets'])
         peaks = list(out.as_dict()['peaks'])
@@ -375,7 +380,7 @@ def ProcessingGSR(participant, section , GSR_MIN_THRESHOLD=0.5 , PLOTANDSAVEGSRD
             ax1 = plt.subplot(2,1,1)
             ax1.set_title(' Plot of the filtered GSR output of the eda.eda function ')
             ax1.plot( ts , filtered , 'r--' , label = 'Filtered EDA signal' , linewidth =0.15)
-            plt.grid(True)
+            plt.grid(True, linestyle='-', linewidth=0.1)
             plt.subplots_adjust(hspace = 0.3)# To prevent the overlap pf the text on the 2 subplots
             verticallines = [ ts[i] for i in peaks ]
             for x in verticallines:
@@ -388,11 +393,11 @@ def ProcessingGSR(participant, section , GSR_MIN_THRESHOLD=0.5 , PLOTANDSAVEGSRD
             peak_ts =[ ts[i] for i in peaks ]
             temp = amplitudes
             ax2.plot( peak_ts , temp , 'gs' , label = 'Amplitude of SCR rise')
-            plt.grid(True)
+            plt.grid(True , linestyle='-', linewidth=0.1)
             ax2.set_xlabel( 'Time of peaks (Derived from ts output of eda.eda() in sec)')
             ax2.set_ylabel( ' SCR Rise in Amplitude (output of eda.eda()) ')
             ax2.legend(loc = 'upper right')
-            plt.savefig( MAINPATH+'/Data/'+participant+'/' + section + '/FilteredGSRSignal.pdf', bbox_inches = 'tight', dpi=900 , quality = 100)
+            plt.savefig( MAINPATH+'/Data/'+participant+'/' + section + '/FilteredGSRSignal.pdf', bbox_inches = 'tight', dpi=950 , quality = 100)
             plt.close()
             # Plots are done. Moving on to saving the data.
             file = open( MAINPATH+'/Data/'+participant+'/'+section+'/GSROutputData.csv', 'wb')
@@ -420,11 +425,11 @@ def ProcessingGSR(participant, section , GSR_MIN_THRESHOLD=0.5 , PLOTANDSAVEGSRD
                 writer.writerow(outputrow)
             file.close()
     except Exception as e:
-        print "HR Processing Exception Catcher for participant: " , participant , 'in section:', section , 'Exception recorded: ' , e
+        print "GSR Processing Exception Catcher for participant: " , participant , 'in section:', section , 'Exception recorded: ' , e
         print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
         file = open(LOGFILE,'a')
         writer = csv.writer(file)
-        writer.writerow([' HR Processing Function Exception Caught for participant: ', participant , 'in section:', section , 'Exception recorded:', e , 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno) ])
+        writer.writerow([' GSR Processing Function Exception Caught for participant: ', participant , 'in section:', section , 'Exception recorded:', e , 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno) ])
         file.close()
 # Function to analyze the PPG data. This is handwritten since biosppy doesn't have functions for this. A
 def ProcessingPPG(participant, section , PLOTANDSAVEPPGDATA=1):
@@ -466,13 +471,13 @@ def ProcessingPPG(participant, section , PLOTANDSAVEPPGDATA=1):
             plt.subplot(2,1,1)
             plt.subplots_adjust(hspace = 0.3)
             plt.plot(time_resampled , ppg_resampled , 'b-' , label = 'Raw PPG Signal' , linewidth=0.1)
-            plt.grid(True)
+            plt.grid(True , linestyle='-', linewidth=0.1)
             plt.xlabel('Time(resampled in sec)')
             plt.ylabel('PPG Signal resampled')
             plt.legend(loc = 'upper right')
             plt.subplot(2,1,2)
             plt.plot(ibi_ts , ibi_resampled , 'rs' , label ='IBI' ,  linewidth = 0.1)
-            plt.grid(True)
+            plt.grid(True , linestyle='-', linewidth=0.1)
             plt.xlabel('Time( Only time points from the ibi_ts )')
             plt.ylabel('IBI points of data ')
             plt.savefig( sectionpath + 'FilteredPPGSignal.pdf', bbox_inches = 'tight', dpi=900 , quality = 100)
@@ -525,7 +530,7 @@ if __name__ == '__main__':
     file.close()
     try:
         #print " The Main Function for the Plotting and Sampling Function"
-        listoffolders = os.listdir(MAINPATH+'/Data/')
+        listoffolders =['P0931' , 'P0881' , 'P0842' , 'P0802']# os.listdir(MAINPATH+'/Data/')
         #Sort the Folders
         listoffolders.sort(key=SortFunc)
         if DEBUG == 1:  print "\nThe list of folder:", listoffolders
@@ -640,6 +645,8 @@ if __name__ == '__main__':
                             HR_WRITER.writerow([ float(row[0].split('\t')[9].split('_')[1]) , float(row[0].split('\t')[19]) , convertedtime[i] , float(row[0].split('\t')[14]) , float(row[0].split('\t')[31]) , float(row[0].split('\t')[32]) , float(row[0].split('\t')[33]) , float(row[0].split('\t')[34]) ])
                             #re_data.append( [ row[0].split('\t')[9] , row[0].split('\t')[19] , row[0].split('\t')[14] , row[0].split('\t')[31] , row[0].split('\t')[32] , row[0].split('\t')[33] , row[0].split('\t')[34] , row[0].split('\t')[13] \
                             #, row[0].split('\t')[15] , row[0].split('\t')[16] , row[0].split('\t')[17] , row[0].split('\t')[27] , row[0].split('\t')[28] , row[0].split('\t')[29] ] )
+                        elif participant in CAT4:
+                            HR_WRITER.writerow([float(row[0].split('\t')[9].split('_')[1]) , float(row[0].split('\t')[19]) , convertedtime[i] , float(row[0].split('\t')[14]) , 0 , 0 , 0 , 0 ])#Participants in cat4 have no HR data.
                     ########
                     #Closing the files
                     GSR_FILE.close()
@@ -741,7 +748,7 @@ if __name__ == '__main__':
                         Events = [ 'GoAroundRocks' , 'CurvedRoads' , 'Failure1' , 'HighwayExit' , 'RightTurn1' , 'RightTurn2' , 'PedestrianEvent' , 'TurnRight3' , 'BicycleEvent' , 'TurnRight4' , 'TurnRight5'\
                         , 'RoadObstructionEvent' , 'HighwayEntryEvent' , 'HighwayIslandEvent' ]
                         # WindowSizes is a list of 14*2 lists. Each element contains 2 values to be added and subtracted to the event time
-                        WindowSizes = [ GoAroundRocksWiNDOW , CurvedRoadsWINDOW , Failure1WINDOW , HighwayExitWINDOW , TURNWINDOW , TURNWINDOW , PedestrianEventWINDOW , TURNWINDOW , BicycleEventWINDOW , TURNWINDOW , TURNWINDOW\
+                        WindowSizes = [ GoAroundRocksWINDOW , CurvedRoadsWINDOW , Failure1WINDOW , HighwayExitWINDOW , TURNWINDOW , TURNWINDOW , PedestrianEventWINDOW , TURNWINDOW , BicycleEventWINDOW , TURNWINDOW , TURNWINDOW\
                          , RoadObstructionEventWINDOW , HighwayEntryEventWINDOW , HighwayIslandEventWINDOW ]
                         MarkerTimes = []#This is the corresponding times for the Events in the above list
                         for row in data:
@@ -921,12 +928,21 @@ if __name__ == '__main__':
                 ##################################################################################################
                 ##################################################################################################
                 if BACKUPDATA == 1:
-                    # Need to find a way to back up the files in the individual sections
+                    #Participant level files to backup
                     grouplist = ['MarkerPlot.pdf' , 'FilteredMarkers.pdf' , 'MARKERS_SHORT.csv']
                     for item in grouplist:
                         if os.path.exists(MAINPATH+'/Data/'+participant+'/'+item):
                             shutil.copy(MAINPATH+'/Data/'+participant+'/'+item , MAINPATH+'/AuxillaryInformation/BackupofImportantData/' + participant+item)#Adding the participant name to the item name before
                             if DEBUG ==0:   print "File moved ", item
+                    #Section level information to backup
+                    insectionbackuplist = ['FilteredPPGSignal.pdf' , 'FilteredGSRSignal.pdf' , 'FilteredECGSignal.pdf']
+                    Events = [ 'GoAroundRocks' , 'CurvedRoads' , 'Failure1' , 'HighwayExit' , 'RightTurn1' , 'RightTurn2' , 'PedestrianEvent' , 'TurnRight3' , 'BicycleEvent' , 'TurnRight4' , 'TurnRight5'\
+                    , 'RoadObstructionEvent' , 'HighwayEntryEvent' , 'HighwayIslandEvent' ]
+                    for event in Events:
+                        sectionpath = MAINPATH+'/Data/'+participant+'/'+event+'/'
+                        for item in insectionbackuplist:
+                            if os.path.exists(sectionpath+item):
+                                shutil.copy(sectionpath+item , MAINPATH+'/AuxillaryInformation/BackupofImportantData/' + participant+event+item)
                 ##################################################################################################
                 ##################################################################################################
             except Exception as e:
