@@ -35,6 +35,8 @@ import shutil
 from statistics import mean
 from PlottingFunctions import *
 from biosppy.signals import ecg, eda
+import scipy.signal as signal_
+from scipy.signal import butter, lfilter, freqz
 import biosppy
 LOGFILE = os.path.abspath('.') + '/CurrentOutputFile.csv'#Using one output file for all the scripts from now to avoid flooding the working folder
 MAINPATH = os.path.abspath('.')#Always specify absolute path for all path specification and file specifications
@@ -51,11 +53,11 @@ GSRSEGMENTATION = 0# This is the subsegment for GSR data segmentation in the SEG
 HRSEGMENTATION = 0# This is the subsegment for HR data segmentation in the SEGMENTDATA section
 PPGSEGMENTATION = 0# This is the subsection for PPG data separation in the SEGMENTDATA section
 DRIVESEGMENTATION = 0# This is the subsection for DRIVE sata separation in the SEGMENTDATA section
-SIGNALPROCESSING = 0# This is the flag to signal the
+SIGNALPROCESSING = 1# This is the flag to signal the
 HRPROCESSING = 0#This is to process the HR Data only
 GSRPROCESSING = 0#This is to process the GSR Data only
 PPGPROCESSING =0# This is to process the PPG Data only
-BACKUPDATA = 1#This is to backup files that are important or are needed for later.
+BACKUPDATA = 0#This is to backup files that are important or are needed for later.
 REMOVEFILE = 0# We are using this marker to remove a file with the same name across all participatns in similar locations.
 #The 3 categories are defined here. Check here before adding the
 #We use this function as a key to sorting the list of folders (participants).
@@ -66,16 +68,24 @@ CAT3 = ['P012']
 CAT4 = ['P0802' , 'P0842']
 # Window sizes are defined here :
 # First value is the subtraction from event to windowstart and the second value is addition from event to windowend
-GoAroundRocksWINDOW = [25 , 25]
-CurvedRoadsWINDOW = [32 , 60]
-Failure1WINDOW = [20 , 0]
-HighwayExitWINDOW = [5 , 5]
-TURNWINDOW = [5 , 5]
-PedestrianEventWINDOW = [69 , 30]
-BicycleEventWINDOW = [61 , 0]
-RoadObstructionEventWINDOW = [37 , 0]
-HighwayEntryEventWINDOW = [42, 0]
-HighwayIslandEventWINDOW = [13, 0]
+GoAroundRocksWINDOW = [25 , 35]
+CurvedRoadsWINDOW = [32 , 70]
+Failure1WINDOW = [20 , 10]
+HighwayExitWINDOW = [5 , 15]
+TURNWINDOW = [5 , 15]
+PedestrianEventWINDOW = [69 , 40]
+BicycleEventWINDOW = [61 , 10]
+RoadObstructionEventWINDOW = [37 , 10]
+HighwayEntryEventWINDOW = [42, 10]
+HighwayIslandEventWINDOW = [13, 10]
+#Low pass filter functions
+def LowPass(order , cutoff , input):
+    #Designing the filter first
+    N = order #Filter order
+    Wn = cutoff #Cutoff frequency
+    B, A = signal_.butter(N, Wn, output = 'ba')
+    output = signal_.filtfilt(B,A,input).tolist()
+    return output
 # Function to return the index of the element nearest to a value
 def find_nearest(array, value):
     ''' Find nearest value is an array '''
@@ -352,8 +362,23 @@ def ProcessingGSR(participant, section , GSR_MIN_THRESHOLD=0.1 , PLOTANDSAVEGSRD
             for i in range(len(time_resampled)):
                 writer.writerow([ time_resampled[i] , gsr_resampled[i] ])
             file.close()
+        #First we try and use the low pass filter on the resampled data to eliminate the noise
+        gsr_lp = LowPass(3, 0.002, gsr_resampled)
+        #Quickly plot the low pass GSR for later purposes with the raw GSR file
+        if PLOTANDSAVEGSRDATA == 1:
+            fig = plt.figure()
+            fig.tight_layout()
+            plt.title(' This is the output of the low pass filter for GSR data in participant '+ participant +'in section' +section)
+            plt.plot(time_resampled , gsr_resampled , label='Resampled GSR' , linewidth =0.1)
+            plt.plot(time_resampled , gsr_lp , label = 'Low pass GSR' , linewidth = 0.1)
+            plt.grid(True, linestyle='-', linewidth=0.1)
+            plt.xlabel('Time (Resampled)')
+            plt.ylabel('GSR')
+            plt.legend(loc='upper right')
+            plt.savefig(MAINPATH+'/Data/'+participant+'/' + section + '/LOWPASSGSRSignal.pdf', bbox_inches = 'tight', dpi=950 , quality = 100)
+            plt.close()
         # Next we use the eda.eda function from biosspy
-        out = eda.eda( signal=np.asarray(gsr_resampled) , sampling_rate=100 , show=False , min_amplitude=GSR_MIN_THRESHOLD )# THIS METHOD IS CAUSING SOME PROBLEMS , SO WE USE SAMPLING RATE = 100
+        out = eda.eda( signal=np.asarray(gsr_lp) , sampling_rate=100 , show=False , min_amplitude=GSR_MIN_THRESHOLD )# THIS METHOD IS CAUSING SOME PROBLEMS , SO WE USE SAMPLING RATE = 100
         # WE CORRECT IT LATER IN THE ts ARRAY EVALUATION
         #out = eda.basic_scr(signal=np.asarray(gsr_resampled) , sampling_rate=1000.0)
         #out = eda.kbk_scr(signal=gsr_resampled , sampling_rate=1000.0)
@@ -915,7 +940,42 @@ if __name__ == '__main__':
                         ####################################
                         if PPGPROCESSING == 1:# and participant=='P002':
                             ProcessingPPG(participant, event)
-                        # We ignore the Drive Data for later
+                        # We ignore the Drive Data for now
+                    #We make another plot of GSR with the marker vertical lines in the main participant folder for later analysis purposes.
+                    #Open Abridged marker file :
+                    file = open(folderpath+'MARKERS_SHORT.csv' , 'r')
+                    reader = csv.reader(file)
+                    ignore = next(reader)
+                    data = list(reader)
+                    file.close()
+                    #Reading the marker times
+                    Events = [ 'GoAroundRocks' , 'CurvedRoads' , 'Failure1' , 'HighwayExit' , 'RightTurn1' , 'RightTurn2' , 'PedestrianEvent' , 'TurnRight3' , 'BicycleEvent' , 'TurnRight4' , 'TurnRight5'\
+                    , 'RoadObstructionEvent' , 'HighwayEntryEvent' , 'HighwayIslandEvent' ]
+                    MarkerTimes = []#This is the corresponding times for the Events in the above list
+                    for row in data:
+                        if row[4] in Events:
+                            MarkerTimes.append(float(row[0]))
+                    # Marker Times are now calculated.
+                    # Reading the data from the GSR csv file.
+                    file = open(GSR_FILE_NAME, 'r')
+                    reader = csv.reader(file)
+                    ignore = next(reader)
+                    data = list(reader)
+                    file.close()
+                    time = [ float(row[2]) for row in data ]
+                    gsr = [ float(row[4]) for row in data ]
+                    #Starting the plot
+                    fig = plt.figure()
+                    fig.tight_layout()
+                    plt.title('GSR with Markers')
+                    plt.plot(time, gsr , 'b-', label = 'Raw GSR' , linewidth = 0.1)
+                    for i in range(len(MarkerTimes)):
+                            plt.axvline(x = MarkerTimes[i], linewidth = '1')
+                    plt.xlabel('Time(in sec)')
+                    plt.ylabel('Raw GSR with Markers')
+                    plt.legend(loc = 'upper right')
+                    plt.savefig(folderpath+'GSR_withMarkers.pdf', bbox_inches = 'tight', dpi=900 , quality=100)
+                    plt.close()
                 ##################################################################################################
                 ##################################################################################################
                 if REMOVEFILE ==1:
