@@ -48,13 +48,13 @@ PROCESSMARKERS = 0#Analyze the markers and make abridged version of the markers 
 ####################################
 REWRITEABRIDGEDMARKERFILE = 0#NEVER SET THIS TO ONE. This Flag is to rewrite the short marker file.
 #####################################
-SEGMENTDATA = 0#This is to cut the data into windows for all the data in the study.
+SEGMENTDATA = 1#This is to cut the data into windows for all the data in the study.
 GSRSEGMENTATION = 0# This is the subsegment for GSR data segmentation in the SEGMENTDATA section
-HRSEGMENTATION = 0# This is the subsegment for HR data segmentation in the SEGMENTDATA section
+HRSEGMENTATION = 1# This is the subsegment for HR data segmentation in the SEGMENTDATA section
 PPGSEGMENTATION = 0# This is the subsection for PPG data separation in the SEGMENTDATA section
 DRIVESEGMENTATION = 0# This is the subsection for DRIVE sata separation in the SEGMENTDATA section
 SIGNALPROCESSING = 1# This is the flag to signal the
-HRPROCESSING = 0#This is to process the HR Data only
+HRPROCESSING = 1#This is to process the HR Data only
 GSRPROCESSING = 0#This is to process the GSR Data only
 PPGPROCESSING =0# This is to process the PPG Data only
 BACKUPDATA = 0#This is to backup files that are important or are needed for later.
@@ -66,18 +66,19 @@ CAT2 = [ 'P022' , 'P037' , 'P040' , 'P042' , 'P045' , 'P046' , 'P047' , 'P055' ,
 'P076' , 'P077' , 'P085' , 'P086' , 'P087' , 'P088' , 'P0881' , 'P089' , 'P090' , 'P090' , 'P093' , 'P0931' , 'P094' , 'P095' , 'P096' , 'P097' ,'P098']
 CAT3 = ['P012']
 CAT4 = ['P0802' , 'P0842']
+BADHRDATA = ['P046' , 'P047' , 'P097' , 'P0802' , 'P0842']
 # Window sizes are defined here :
 # First value is the subtraction from event to windowstart and the second value is addition from event to windowend
-GoAroundRocksWINDOW = [25 , 35]
-CurvedRoadsWINDOW = [32 , 70]
-Failure1WINDOW = [20 , 10]
+GoAroundRocksWINDOW = [120 , 40]# We take first 120 to 50 seconds of the GoAroundRocksWINDOW and use it as baseline for HR Calculating
+CurvedRoadsWINDOW = [40 , 80]
+Failure1WINDOW = [30, 60]
 HighwayExitWINDOW = [5 , 15]
 TURNWINDOW = [5 , 15]
-PedestrianEventWINDOW = [69 , 40]
-BicycleEventWINDOW = [61 , 10]
-RoadObstructionEventWINDOW = [37 , 10]
-HighwayEntryEventWINDOW = [42, 10]
-HighwayIslandEventWINDOW = [13, 10]
+PedestrianEventWINDOW = [80 , 40]
+BicycleEventWINDOW = [80 , 20]
+RoadObstructionEventWINDOW = [50 , 20]
+HighwayEntryEventWINDOW = [60, 30]
+HighwayIslandEventWINDOW = [35, 100]
 #Low pass filter functions
 def LowPass(order , cutoff , input):
     #Designing the filter first
@@ -215,7 +216,7 @@ def ProcessingHR(participant, section , PLOTANDSAVEHRDATA = 1):
             # Write the resampled data to a file in case we might need it later
             file = open( MAINPATH+'/Data/'+participant+ '/' + section + '/HR_resampled.csv' , 'wb')
             writer = csv.writer(file)
-            writer.writerow( [ 'Time' , 'ECG1' , 'ECG2' , 'ECG3' , 'ECG4' ])
+            writer.writerow( [ 'Time' , 'ECG1' , 'ECG2' , 'ECG3' , 'ECG4' ,])
             for i in range(len(time_resampled)):
                 writer.writerow([ time_resampled[i] , ECG1_resampled[i] , ECG2_resampled[i] , ECG3_resampled[i] , ECG4_resampled[i] ])
             file.close()
@@ -224,7 +225,10 @@ def ProcessingHR(participant, section , PLOTANDSAVEHRDATA = 1):
             ############################################################
         # Biosppy calculates the ecg data based on the new resampled
         try:
-            out = ecg.ecg(signal=ECG1_resampled, sampling_rate=1000.0 , show=False)
+            if participant in ['P042' , 'P076' , 'P094' , 'P095']:#participants who need to get a different column analyzed first.
+                out = ecg.ecg(signal=ECG3_resampled, sampling_rate=1000.0 , show=False)
+            else:
+                out = ecg.ecg(signal=ECG1_resampled, sampling_rate=1000.0 , show=False)
         except:
             try:
                 out = ecg.ecg(signal=ECG2_resampled, sampling_rate=1000.0 , show=False)
@@ -261,6 +265,12 @@ def ProcessingHR(participant, section , PLOTANDSAVEHRDATA = 1):
         rpeaks = out.as_dict()['rpeaks']
         heartrate_ts = out.as_dict()['heart_rate_ts']
         heartrate = out.as_dict()['heart_rate']
+        #We calculate the maximum heart rate for the GoAroundRocksWindow from the list by selecting the last 70 seconds of the interval
+        if section not in ['GoAroundRocks']:
+            maximumHeartRate = max(heartrate)
+        elif section in ['GoAroundRocks']:
+            maximumHeartRate= max(heartrate[60:-1])#This is hard coded. But it is okay, since all the participants have the same length at event 1.
+            print "Average Baseline Heart Rate for participant : " , participant , " is: " , mean(heartrate[0:59])
         if PLOTANDSAVEHRDATA == 1:
             # We now plot and save the figure for later
             fig = plt.figure()
@@ -330,6 +340,8 @@ def ProcessingHR(participant, section , PLOTANDSAVEHRDATA = 1):
                 writer.writerow(outputrow)
             file.close()
             #Output Written and closed
+            #Returning the maximum HR value in the interval
+            return maximumHeartRate
     except Exception as e:
         print "HR Processing Exception Catcher for participant: " , participant , 'Exception recorded: ' , e
         print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
@@ -363,7 +375,7 @@ def ProcessingGSR(participant, section , GSR_MIN_THRESHOLD=0.1 , PLOTANDSAVEGSRD
                 writer.writerow([ time_resampled[i] , gsr_resampled[i] ])
             file.close()
         #First we try and use the low pass filter on the resampled data to eliminate the noise
-        gsr_lp = LowPass(3, 0.002, gsr_resampled)
+        gsr_lp = LowPass(3, 0.0005, gsr_resampled)
         #Quickly plot the low pass GSR for later purposes with the raw GSR file
         if PLOTANDSAVEGSRDATA == 1:
             fig = plt.figure()
@@ -371,7 +383,9 @@ def ProcessingGSR(participant, section , GSR_MIN_THRESHOLD=0.1 , PLOTANDSAVEGSRD
             plt.title(' This is the output of the low pass filter for GSR data in participant '+ participant +'in section' +section)
             plt.plot(time_resampled , gsr_resampled , label='Resampled GSR' , linewidth =0.1)
             plt.plot(time_resampled , gsr_lp , label = 'Low pass GSR' , linewidth = 0.1)
-            plt.grid(True, linestyle='-', linewidth=0.1)
+            plt.grid(b=True, which='major', color='#666666', linestyle='-')
+            plt.minorticks_on()
+            plt.grid(b=True, which = 'minor' , color='#999999', linestyle='-', alpha=0.2)
             plt.xlabel('Time (Resampled)')
             plt.ylabel('GSR')
             plt.legend(loc='upper right')
@@ -412,7 +426,10 @@ def ProcessingGSR(participant, section , GSR_MIN_THRESHOLD=0.1 , PLOTANDSAVEGSRD
                 ax1.axvline( x, linewidth = '1')
             ax1.set_xlabel( 'Time (Ts output of eda.eda() in sec)')
             ax1.set_ylabel( ' Filtered EDA signal (output of eda.eda()) ')
-            ax1.legend(loc = 'upper right')
+            #ax1.legend(loc = 'upper right')
+            plt.grid(b=True, which='major', color='#666666', linestyle='-')
+            plt.minorticks_on()
+            plt.grid(b=True, which = 'minor' , color='#999999', linestyle='-', alpha=0.2)
             ax2 = plt.subplot(2,1,2 , sharex =ax1)
             ax2.set_title( ' Plot of the amplitude of the peaks in the GSR signal. ')
             peak_ts =[ ts[i] for i in peaks ]
@@ -421,7 +438,10 @@ def ProcessingGSR(participant, section , GSR_MIN_THRESHOLD=0.1 , PLOTANDSAVEGSRD
             plt.grid(True , linestyle='-', linewidth=0.1)
             ax2.set_xlabel( 'Time of peaks (Derived from ts output of eda.eda() in sec)')
             ax2.set_ylabel( ' SCR Rise in Amplitude (output of eda.eda()) ')
-            ax2.legend(loc = 'upper right')
+            #ax2.legend(loc = 'upper right')
+            plt.grid(b=True, which='major', color='#666666', linestyle='-')
+            plt.minorticks_on()
+            plt.grid(b=True, which = 'minor' , color='#999999', linestyle='-', alpha=0.2)
             plt.savefig( MAINPATH+'/Data/'+participant+'/' + section + '/FilteredGSRSignal.pdf', bbox_inches = 'tight', dpi=950 , quality = 100)
             plt.close()
             # Plots are done. Moving on to saving the data.
@@ -570,6 +590,7 @@ if __name__ == '__main__':
             DRIVE_FILE_NAME = MAINPATH+'/Data/'+participant+'/DRIVE.csv'
             PPG_FILE_NAME = MAINPATH+'/Data/'+participant+'/PPG.csv'
             MARKER_FILE_NAME = MAINPATH+'/Data/'+participant+'/MARKERS.csv'
+            MAXHR_FILE_NAME = MAINPATH+'/MaximumHeartRate.csv'
             try:
                 if READANDEXTRACTINDIVIDUALFILES == 1:
                     file = open(folderpath+ participant + '.txt','r')
@@ -650,13 +671,19 @@ if __name__ == '__main__':
                         #ECG FILE < Timestamp 1 , TImestamp 2 , Markers , ECG(1-4) >
                         ########
                         #Writing the GSR File
-                        GSR_WRITER.writerow([ float(row[0].split('\t')[9].split('_')[1]) , float(row[0].split('\t')[19]) , convertedtime[i] , float(row[0].split('\t')[14]) , float(row[0].split('\t')[29]) ])
+                        if participant in CAT3:
+                            GSR_WRITER.writerow([ float(row[0].split('\t')[9].split('_')[1]) , float(row[0].split('\t')[14]) , convertedtime[i] , 0, float(row[0].split('\t')[24]) ])#No Marker Data in this participant
+                        else:
+                            GSR_WRITER.writerow([ float(row[0].split('\t')[9].split('_')[1]) , float(row[0].split('\t')[19]) , convertedtime[i] , float(row[0].split('\t')[14]) , float(row[0].split('\t')[29]) ])
                         ########
                         #Writing the DRIVE File
                         DRIVE_WRITER.writerow([ float(row[0].split('\t')[9].split('_')[1]) , float(row[0].split('\t')[19]) , convertedtime[i] , float(row[0].split('\t')[14]) ,  float(row[0].split('\t')[13]) , float(row[0].split('\t')[15]) , float(row[0].split('\t')[16]) , float(row[0].split('\t')[17]) ])
                         ########
                         #Writing the PPG File
-                        PPG_WRITER.writerow([ float(row[0].split('\t')[9].split('_')[1]) , float(row[0].split('\t')[19]) , convertedtime[i] , float(row[0].split('\t')[14]) , float(row[0].split('\t')[27]) , float(row[0].split('\t')[28]) ])
+                        if participant in CAT3:
+                            PPG_WRITER.writerow([ float(row[0].split('\t')[9].split('_')[1]) , float(row[0].split('\t')[19]) , convertedtime[i] , 0 , float(row[0].split('\t')[22]) , float(row[0].split('\t')[23]) ])
+                        else:
+                            PPG_WRITER.writerow([ float(row[0].split('\t')[9].split('_')[1]) , float(row[0].split('\t')[19]) , convertedtime[i] , float(row[0].split('\t')[14]) , float(row[0].split('\t')[27]) , float(row[0].split('\t')[28]) ])
                         ########
                         if participant in CAT1:
                             HR_WRITER.writerow([ float(row[0].split('\t')[9].split('_')[1]) , float(row[0].split('\t')[19]) , convertedtime[i] , float(row[0].split('\t')[14]) , float(row[0].split('\t')[44]) , float(row[0].split('\t')[45]) , float(row[0].split('\t')[46]) , float(row[0].split('\t')[47]) ])
@@ -667,7 +694,7 @@ if __name__ == '__main__':
                             #re_data.append( [ row[0].split('\t')[9] , row[0].split('\t')[19] , row[0].split('\t')[14] , row[0].split('\t')[36] , row[0].split('\t')[37] , row[0].split('\t')[38] , row[0].split('\t')[39] , row[0].split('\t')[13] \
                             #, row[0].split('\t')[15] , row[0].split('\t')[16] , row[0].split('\t')[17] , row[0].split('\t')[27] , row[0].split('\t')[28] , row[0].split('\t')[29] ] )
                         elif participant in CAT3:
-                            HR_WRITER.writerow([ float(row[0].split('\t')[9].split('_')[1]) , float(row[0].split('\t')[19]) , convertedtime[i] , float(row[0].split('\t')[14]) , float(row[0].split('\t')[31]) , float(row[0].split('\t')[32]) , float(row[0].split('\t')[33]) , float(row[0].split('\t')[34]) ])
+                            HR_WRITER.writerow([ float(row[0].split('\t')[9].split('_')[1]) , float(row[0].split('\t')[14]) , convertedtime[i] , 0 , float(row[0].split('\t')[31]) , float(row[0].split('\t')[32]) , float(row[0].split('\t')[33]) , float(row[0].split('\t')[34]) ])
                             #re_data.append( [ row[0].split('\t')[9] , row[0].split('\t')[19] , row[0].split('\t')[14] , row[0].split('\t')[31] , row[0].split('\t')[32] , row[0].split('\t')[33] , row[0].split('\t')[34] , row[0].split('\t')[13] \
                             #, row[0].split('\t')[15] , row[0].split('\t')[16] , row[0].split('\t')[17] , row[0].split('\t')[27] , row[0].split('\t')[28] , row[0].split('\t')[29] ] )
                         elif participant in CAT4:
@@ -829,7 +856,7 @@ if __name__ == '__main__':
                             data = list(reader)
                             file.close()
                             time = [ float(row[2]) for row in data ]
-                            markers = [ float(row[3]) for row in data ]
+                            marker = [ float(row[3]) for row in data ]
                             hr1 = [ float(row[4]) for row in data ]
                             hr2 = [ float(row[5]) for row in data ]
                             hr3 = [ float(row[6]) for row in data ]
@@ -931,9 +958,10 @@ if __name__ == '__main__':
                     #Declaring the Events
                     Events = [ 'GoAroundRocks' , 'CurvedRoads' , 'Failure1' , 'HighwayExit' , 'RightTurn1' , 'RightTurn2' , 'PedestrianEvent' , 'TurnRight3' , 'BicycleEvent' , 'TurnRight4' , 'TurnRight5'\
                     , 'RoadObstructionEvent' , 'HighwayEntryEvent' , 'HighwayIslandEvent' ]
+                    maxHR = [participant]# Declare a new array of the maximum HR in each interval. Participant name is the first value for the file.
                     for event in Events:
                         if HRPROCESSING == 1:# and participant=='P002':
-                            ProcessingHR(participant, event )
+                            maxHR.append(str(ProcessingHR(participant, event)))
                         ####################################
                         if GSRPROCESSING == 1:# and participant=='P002':
                             ProcessingGSR(participant, event , GSR_MIN_THRESHOLD = 0.5)
@@ -970,12 +998,28 @@ if __name__ == '__main__':
                     plt.title('GSR with Markers')
                     plt.plot(time, gsr , 'b-', label = 'Raw GSR' , linewidth = 0.1)
                     for i in range(len(MarkerTimes)):
-                            plt.axvline(x = MarkerTimes[i], linewidth = '1')
+                            plt.axvline(x = MarkerTimes[i], linewidth = 0.2 , linestyle = '-.')
                     plt.xlabel('Time(in sec)')
                     plt.ylabel('Raw GSR with Markers')
                     plt.legend(loc = 'upper right')
+                    plt.grid(b=True, which='major', color='#666666', linestyle='-' , linewidth = 0.1)
+                    plt.minorticks_on()
+                    plt.grid(b=True, which = 'minor' , color='#999999', linestyle='-', alpha=0.2 , linewidth = 0.1)
                     plt.savefig(folderpath+'GSR_withMarkers.pdf', bbox_inches = 'tight', dpi=900 , quality=100)
                     plt.close()
+                    #################################
+                    # We need to extract the heart rate from the baseline
+                    # Baseline times are [GoAroundRocks-120 , GoAroundRocks- 50]
+                    # We are doing it manually
+                    #################################
+                    # Write the max heart rate row to the main file in the main path
+                    file = open(MAXHR_FILE_NAME, 'a')
+                    writer = csv.writer(file)
+                    if participant not in BADHRDATA:
+                        writer.writerow(maxHR)
+                    file.close()
+                    #File for maximum heart rate written.
+                    ##################################
                 ##################################################################################################
                 ##################################################################################################
                 if REMOVEFILE ==1:
