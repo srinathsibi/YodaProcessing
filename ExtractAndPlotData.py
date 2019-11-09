@@ -50,13 +50,14 @@ REWRITEABRIDGEDMARKERFILE = 0#NEVER SET THIS TO ONE. This Flag is to rewrite the
 #####################################
 SEGMENTDATA = 1#This is to cut the data into windows for all the data in the study.
 GSRSEGMENTATION = 0# This is the subsegment for GSR data segmentation in the SEGMENTDATA section
-HRSEGMENTATION = 1# This is the subsegment for HR data segmentation in the SEGMENTDATA section
+HRSEGMENTATION = 0# This is the subsegment for HR data segmentation in the SEGMENTDATA section
 PPGSEGMENTATION = 0# This is the subsection for PPG data separation in the SEGMENTDATA section
 DRIVESEGMENTATION = 0# This is the subsection for DRIVE sata separation in the SEGMENTDATA section
-SIGNALPROCESSING = 1# This is the flag to signal the
-HRPROCESSING = 1#This is to process the HR Data only
+SIGNALPROCESSING = 0# This is the flag to signal the
+HRPROCESSING = 0#This is to process the HR Data only
 GSRPROCESSING = 0#This is to process the GSR Data only
 PPGPROCESSING =0# This is to process the PPG Data only
+ALTGSRPROCESSING = 1# This section is to process the entire GSR Signal with biosppy and calculate the number of peaks in the intervals we are interested in.
 BACKUPDATA = 0#This is to backup files that are important or are needed for later.
 REMOVEFILE = 0# We are using this marker to remove a file with the same name across all participatns in similar locations.
 #The 3 categories are defined here. Check here before adding the
@@ -579,7 +580,7 @@ if __name__ == '__main__':
         #Sort the Folders
         listoffolders.sort(key=SortFunc)
         if DEBUG == 1:  print "\nThe list of folder:", listoffolders
-        for participant in listoffolders:
+        for participant in ['P002' , 'P042' , 'P076' , 'P094' , 'P095']:#listoffolders:
             print "\n\nAnalyzing the data for participant: " , participant
             #path to the contents of the folder.
             folderpath = MAINPATH+'/Data/'+participant+'/'
