@@ -48,16 +48,17 @@ PROCESSMARKERS = 0#Analyze the markers and make abridged version of the markers 
 ####################################
 REWRITEABRIDGEDMARKERFILE = 0#NEVER SET THIS TO ONE. This Flag is to rewrite the short marker file.
 #####################################
-SEGMENTDATA = 1#This is to cut the data into windows for all the data in the study.
+SEGMENTDATA = 0#This is to cut the data into windows for all the data in the study.
 GSRSEGMENTATION = 0# This is the subsegment for GSR data segmentation in the SEGMENTDATA section
 HRSEGMENTATION = 0# This is the subsegment for HR data segmentation in the SEGMENTDATA section
 PPGSEGMENTATION = 0# This is the subsection for PPG data separation in the SEGMENTDATA section
 DRIVESEGMENTATION = 0# This is the subsection for DRIVE sata separation in the SEGMENTDATA section
-SIGNALPROCESSING = 0# This is the flag to signal the
+SIGNALPROCESSING = 1# This is the flag to signal the
 HRPROCESSING = 0#This is to process the HR Data only
 GSRPROCESSING = 0#This is to process the GSR Data only
 PPGPROCESSING =0# This is to process the PPG Data only
 ALTGSRPROCESSING = 1# This section is to process the entire GSR Signal with biosppy and calculate the number of peaks in the intervals we are interested in.
+#ALTGSRPROCESSING is too slow owing to the ginormous nature of the resampled GSR output for each participant. To effeciently do it, we
 BACKUPDATA = 0#This is to backup files that are important or are needed for later.
 REMOVEFILE = 0# We are using this marker to remove a file with the same name across all participatns in similar locations.
 #The 3 categories are defined here. Check here before adding the
@@ -68,13 +69,14 @@ CAT2 = [ 'P022' , 'P037' , 'P040' , 'P042' , 'P045' , 'P046' , 'P047' , 'P055' ,
 CAT3 = ['P012']
 CAT4 = ['P0802' , 'P0842']
 BADHRDATA = ['P046' , 'P047' , 'P097' , 'P0802' , 'P0842']
+BADGSRDATA = ['P016' , 'P012' , 'P098' , 'P060' , 'P058' , 'P080' , 'P086' , 'P087' , 'P093' , 'P0932']
 # Window sizes are defined here :
 # First value is the subtraction from event to windowstart and the second value is addition from event to windowend
-GoAroundRocksWINDOW = [120 , 40]# We take first 120 to 50 seconds of the GoAroundRocksWINDOW and use it as baseline for HR Calculating
+GoAroundRocksWINDOW = [60 , 40]# We take first 120 to 50 seconds of the GoAroundRocksWINDOW and use it as baseline for HR Calculating
 CurvedRoadsWINDOW = [40 , 80]
 Failure1WINDOW = [30, 60]
-HighwayExitWINDOW = [5 , 15]
-TURNWINDOW = [5 , 15]
+HighwayExitWINDOW = [15 , 15]
+TURNWINDOW = [25 , 25]
 PedestrianEventWINDOW = [80 , 40]
 BicycleEventWINDOW = [80 , 20]
 RoadObstructionEventWINDOW = [50 , 20]
@@ -477,6 +479,114 @@ def ProcessingGSR(participant, section , GSR_MIN_THRESHOLD=0.1 , PLOTANDSAVEGSRD
         writer = csv.writer(file)
         writer.writerow([' GSR Processing Function Exception Caught for participant: ', participant , 'in section:', section , 'Exception recorded:', e , 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno) ])
         file.close()
+#Function to calculate the peaks in all the GSR data and then organize them accodingly
+def Altgsrprocessing(participant, Events , MarkerTimes , GSR_MIN_THRESHOLD =0.2):
+    try:
+        print " Alternate Processing GSR for participant: " , participant
+        #First we read the data from the GSR file and resample it.
+        # Reading the data from the GSR csv file.
+        file = open(GSR_FILE_NAME, 'r')
+        reader = csv.reader(file)
+        ignore = next(reader)
+        data = list(reader)
+        file.close()
+        time = [ float(row[2]) for row in data ]
+        gsr = [ float(row[4]) for row in data ]
+        # Data is now loaded
+        # Now we start at 60 seconds before the GoAroundRocks Marker Time
+        ########################################################################
+        #BEFORE FAILURE 1
+        # First we calculate the array of markers for the interval before the Failure 1 event
+        step = 50# Length of windows in sec
+        windowstart = MarkerTimes[0]-60# Start time of the windows
+        windowstop = windowstart+step#Stop time for the windows
+        MIDPOINT = MarkerTimes[2]+20# Hard stop at 40 seconds after the first failure
+        first_peaks_count = []
+        while windowstop <= MIDPOINT:
+            if DEBUG==1:    print " window times are : ", windowstart , ' ' , windowstop
+            #Locate the indices of the windowstart and windowstop in the time array
+            index_windowstart = find_nearest( np.asarray(time) , windowstart)
+            index_windowstop = find_nearest( np.asarray(time) , windowstop)
+            # Now we extract the time and gsr signal pieces in the window
+            time_ = time[index_windowstart:index_windowstop]
+            gsr_ = gsr[index_windowstart:index_windowstop]
+            # Plotting it just to verify.
+            #fig = plt.figure()
+            #plt.title(' Temp Plot')
+            #plt.plot(time_, gsr_)
+            #plt.show()
+            #plt.close()
+            try:
+                time_resampled , gsr_resampled = Resample(time_ , gsr_ , participant , 'AltProcessing' , target_fs = 1000.0 , type = 'gsr')
+                gsr_lp = LowPass(3, 0.0005, gsr_resampled)
+                out = eda.eda( signal=np.asarray(gsr_lp) , sampling_rate=100 , show=False , min_amplitude=GSR_MIN_THRESHOLD )
+                ts_temp = list(out.as_dict()['ts'])
+                ts = [ ts_temp[i]/10 for i in range(len(ts_temp)) ]
+                filtered = list(out.as_dict()['filtered'])
+                onsets = list(out.as_dict()['onsets'])
+                peaks = list(out.as_dict()['peaks'])
+                amplitudes = list(out.as_dict()['amplitudes'])
+                first_peaks_count.append(len(peaks))
+            except:
+                first_peaks_count.append(np.nan)
+            ######################
+            # End of processing for the window
+            windowstart = windowstop
+            windowstop = windowstart+step
+        print " The count of all the peaks in participant " , participant , " before the Failure1 event are:\n " , first_peaks_count
+        ########################################################################
+        #AFTER FAILURE1
+        step = 50
+        windowstart = MIDPOINT = MarkerTimes[2]+20
+        windowstop = windowstart+step
+        ENDPOINT = time[-1]#Last time value in the array
+        second_peaks_count = []
+        while windowstop <= ENDPOINT:
+            if DEBUG==1:    print " window times are : ", windowstart , ' ' , windowstop
+            #Locate the indices of the windowstart and windowstop in the time array
+            index_windowstart = find_nearest( np.asarray(time) , windowstart )
+            index_windowstop = find_nearest( np.asarray(time) , windowstop )
+            time_ = time[index_windowstart:index_windowstop]
+            gsr_ = gsr[index_windowstart:index_windowstop]
+            # Plotting it just to verify.
+            #fig = plt.figure()
+            #plt.title(' Temp Plot')
+            #plt.plot(time_, gsr_)
+            #plt.show()
+            #plt.close()
+            try:
+                time_resampled , gsr_resampled = Resample(time_ , gsr_ , participant , 'AltProcessing' , target_fs =1000.0 , type = 'gsr')
+                gsr_lp = LowPass(3, 0.0005 , gsr_resampled)
+                out = eda.eda( signal = np.asarray(gsr_lp) , sampling_rate =1000 , show = False , min_amplitude= GSR_MIN_THRESHOLD )
+                ts_temp = list(out.as_dict()['ts'])
+                ts = [ ts_temp[i] for i in range(len(ts_temp)) ]
+                filtered = list(out.as_dict()['filtered'])
+                onsets = list(out.as_dict()['onsets'])
+                peaks = list(out.as_dict()['peaks'])
+                amplitudes = list(out.as_dict()['amplitudes'])
+                second_peaks_count.append(len(peaks))
+            except:
+                second_peaks_count.append(np.nan)
+            #################################
+            # End of processing for the window
+            windowstart = windowstop
+            windowstop = windowstart + step
+        print " The count of all the peaks in participant " , participant , "after the Failure1 event are:\n " , second_peaks_count
+        # We open a peaks_count file in the main directory and then aggregate the data for analysis.
+        file = open(MAINPATH+'/Peaks_Count.csv' , 'a')
+        writer = csv.writer(file)
+        header = ['Participant'] + ['BeforeEvent3']*len(first_peaks_count) + ['AfterEvent3']*len(second_peaks_count)
+        writer.writerow(header)
+        info = [participant] + [str(i) for i in first_peaks_count] +[str(i) for i in second_peaks_count]
+        writer.writerow(info)
+        file.close()
+    except Exception as e:
+        print "GSR Alternate Processing Exception Catcher for participant: " , participant , 'Exception recorded: ' , e
+        print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
+        file = open(LOGFILE,'a')
+        writer = csv.writer(file)
+        writer.writerow([' GSR Alternate Processing Function Exception Caught for participant: ', participant , 'Exception recorded:', e , 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno) ])
+        file.close()
 # Function to analyze the PPG data. This is handwritten since biosppy doesn't have functions for this. A
 def ProcessingPPG(participant, section , PLOTANDSAVEPPGDATA=1):
     try:
@@ -580,7 +690,7 @@ if __name__ == '__main__':
         #Sort the Folders
         listoffolders.sort(key=SortFunc)
         if DEBUG == 1:  print "\nThe list of folder:", listoffolders
-        for participant in ['P002' , 'P042' , 'P076' , 'P094' , 'P095']:#listoffolders:
+        for participant in listoffolders:
             print "\n\nAnalyzing the data for participant: " , participant
             #path to the contents of the folder.
             folderpath = MAINPATH+'/Data/'+participant+'/'
@@ -956,20 +1066,6 @@ if __name__ == '__main__':
                     ##### Starting the HR processing ############
                     # Individual data files can be analyzed if needed using the flags at the top of the file.
                     ##############
-                    #Declaring the Events
-                    Events = [ 'GoAroundRocks' , 'CurvedRoads' , 'Failure1' , 'HighwayExit' , 'RightTurn1' , 'RightTurn2' , 'PedestrianEvent' , 'TurnRight3' , 'BicycleEvent' , 'TurnRight4' , 'TurnRight5'\
-                    , 'RoadObstructionEvent' , 'HighwayEntryEvent' , 'HighwayIslandEvent' ]
-                    maxHR = [participant]# Declare a new array of the maximum HR in each interval. Participant name is the first value for the file.
-                    for event in Events:
-                        if HRPROCESSING == 1:# and participant=='P002':
-                            maxHR.append(str(ProcessingHR(participant, event)))
-                        ####################################
-                        if GSRPROCESSING == 1:# and participant=='P002':
-                            ProcessingGSR(participant, event , GSR_MIN_THRESHOLD = 0.5)
-                        ####################################
-                        if PPGPROCESSING == 1:# and participant=='P002':
-                            ProcessingPPG(participant, event)
-                        # We ignore the Drive Data for now
                     #We make another plot of GSR with the marker vertical lines in the main participant folder for later analysis purposes.
                     #Open Abridged marker file :
                     file = open(folderpath+'MARKERS_SHORT.csv' , 'r')
@@ -1009,9 +1105,20 @@ if __name__ == '__main__':
                     plt.savefig(folderpath+'GSR_withMarkers.pdf', bbox_inches = 'tight', dpi=900 , quality=100)
                     plt.close()
                     #################################
-                    # We need to extract the heart rate from the baseline
-                    # Baseline times are [GoAroundRocks-120 , GoAroundRocks- 50]
-                    # We are doing it manually
+                    #Declaring the Events
+                    Events = [ 'GoAroundRocks' , 'CurvedRoads' , 'Failure1' , 'HighwayExit' , 'RightTurn1' , 'RightTurn2' , 'PedestrianEvent' , 'TurnRight3' , 'BicycleEvent' , 'TurnRight4' , 'TurnRight5'\
+                    , 'RoadObstructionEvent' , 'HighwayEntryEvent' , 'HighwayIslandEvent' ]
+                    maxHR = [participant]# Declare a new array of the maximum HR in each interval. Participant name is the first value for the file.
+                    for event in Events:
+                        if HRPROCESSING == 1:# and participant=='P002':
+                            maxHR.append(str(ProcessingHR(participant, event)))
+                        ####################################
+                        if GSRPROCESSING == 1:# and participant=='P002':
+                            ProcessingGSR(participant, event , GSR_MIN_THRESHOLD = 0.5)
+                        ####################################
+                        if PPGPROCESSING == 1:# and participant=='P002':
+                            ProcessingPPG(participant, event)
+                        # We ignore the Drive Data for now
                     #################################
                     # Write the max heart rate row to the main file in the main path
                     file = open(MAXHR_FILE_NAME, 'a')
@@ -1021,6 +1128,9 @@ if __name__ == '__main__':
                     file.close()
                     #File for maximum heart rate written.
                     ##################################
+                    if ALTGSRPROCESSING == 1 and participant not in BADGSRDATA:
+                        # Events and Marker Time are already defined. We can use them instead of reading it again.
+                        Altgsrprocessing(participant, Events , MarkerTimes , GSR_MIN_THRESHOLD = 0.5)
                 ##################################################################################################
                 ##################################################################################################
                 if REMOVEFILE ==1:
