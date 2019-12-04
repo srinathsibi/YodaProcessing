@@ -55,9 +55,9 @@ PPGSEGMENTATION = 0# This is the subsection for PPG data separation in the SEGME
 DRIVESEGMENTATION = 0# This is the subsection for DRIVE sata separation in the SEGMENTDATA section
 SIGNALPROCESSING = 1# This is the flag to signal the
 HRPROCESSING = 0#This is to process the HR Data only
-GSRPROCESSING = 0#This is to process the GSR Data only
+GSRPROCESSING = 1#This is to process the GSR Data only
 PPGPROCESSING =0# This is to process the PPG Data only
-ALTGSRPROCESSING = 1# This section is to process the entire GSR Signal with biosppy and calculate the number of peaks in the intervals we are interested in.
+ALTGSRPROCESSING = 0# This section is to process the entire GSR Signal with biosppy and calculate the number of peaks in the intervals we are interested in.
 #ALTGSRPROCESSING is too slow owing to the ginormous nature of the resampled GSR output for each participant. To effeciently do it, we
 BACKUPDATA = 0#This is to backup files that are important or are needed for later.
 REMOVEFILE = 0# We are using this marker to remove a file with the same name across all participatns in similar locations.
@@ -472,6 +472,7 @@ def ProcessingGSR(participant, section , GSR_MIN_THRESHOLD=0.1 , PLOTANDSAVEGSRD
                     outputrow.append(np.nan)
                 writer.writerow(outputrow)
             file.close()
+        return len(peaks)#Return the number of peaks detected in the given interval
     except Exception as e:
         print "GSR Processing Exception Catcher for participant: " , participant , 'in section:', section , 'Exception recorded: ' , e
         print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
@@ -702,6 +703,7 @@ if __name__ == '__main__':
             PPG_FILE_NAME = MAINPATH+'/Data/'+participant+'/PPG.csv'
             MARKER_FILE_NAME = MAINPATH+'/Data/'+participant+'/MARKERS.csv'
             MAXHR_FILE_NAME = MAINPATH+'/MaximumHeartRate.csv'
+            GSR_PEAK_COUNT = MAINPATH+'/GSRPEAKS.csv'
             try:
                 if READANDEXTRACTINDIVIDUALFILES == 1:
                     file = open(folderpath+ participant + '.txt','r')
@@ -1109,25 +1111,37 @@ if __name__ == '__main__':
                     Events = [ 'GoAroundRocks' , 'CurvedRoads' , 'Failure1' , 'HighwayExit' , 'RightTurn1' , 'RightTurn2' , 'PedestrianEvent' , 'TurnRight3' , 'BicycleEvent' , 'TurnRight4' , 'TurnRight5'\
                     , 'RoadObstructionEvent' , 'HighwayEntryEvent' , 'HighwayIslandEvent' ]
                     maxHR = [participant]# Declare a new array of the maximum HR in each interval. Participant name is the first value for the file.
+                    peakcount = [participant]#Declare a new array for recording the peaks in each event interval
                     for event in Events:
                         if HRPROCESSING == 1:# and participant=='P002':
                             maxHR.append(str(ProcessingHR(participant, event)))
                         ####################################
                         if GSRPROCESSING == 1:# and participant=='P002':
-                            ProcessingGSR(participant, event , GSR_MIN_THRESHOLD = 0.5)
+                            peakcount.append(str(ProcessingGSR(participant, event , GSR_MIN_THRESHOLD = 0.25)))
                         ####################################
                         if PPGPROCESSING == 1:# and participant=='P002':
                             ProcessingPPG(participant, event)
                         # We ignore the Drive Data for now
                     #################################
                     # Write the max heart rate row to the main file in the main path
-                    file = open(MAXHR_FILE_NAME, 'a')
-                    writer = csv.writer(file)
-                    if participant not in BADHRDATA:
-                        writer.writerow(maxHR)
-                    file.close()
-                    #File for maximum heart rate written.
+                    if HRPROCESSING==1:
+                        file = open(MAXHR_FILE_NAME, 'a')
+                        writer = csv.writer(file)
+                        if participant not in BADHRDATA:
+                            writer.writerow(maxHR)
+                        file.close()
+                        #File for maximum heart rate written.
                     ##################################
+                    ##################################
+                    # Write the number of peaks in the GSR_PEAK_COUNT file
+                    if GSRPROCESSING==1:
+                        file = open(GSR_PEAK_COUNT , 'a')
+                        writer = csv.writer(file)
+                        writer.writerow(peakcount)
+                        file.close()
+                        #File for the GSR data peak counting is done.
+                    ##################################
+                    ### BAD IDEA BELOW!!!!! ##########
                     if ALTGSRPROCESSING == 1 and participant not in BADGSRDATA:
                         # Events and Marker Time are already defined. We can use them instead of reading it again.
                         Altgsrprocessing(participant, Events , MarkerTimes , GSR_MIN_THRESHOLD = 0.5)
