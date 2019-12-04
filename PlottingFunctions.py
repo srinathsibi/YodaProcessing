@@ -18,7 +18,7 @@ plt.rcParams.update({'font.size': 3.5})
 DEBUG = 0#Variable to identify what if anything is wrong with the PERCLOS calcuator
 def Plot2Data( x_data , y_data , ylabel, plottitle, savename, LOGFILE, participant, savepath, xlabel = 'Time (in seconds)' , section ='WholeData'):
     if DEBUG == 1:
-        print "Plotting function called for : ", ylabel
+        print( "Plotting function called for : ", ylabel)
     try:
         #try:
             #x_data = [ float(plotdata[i][0]) for i in range(len(plotdata)) ]
@@ -32,21 +32,21 @@ def Plot2Data( x_data , y_data , ylabel, plottitle, savename, LOGFILE, participa
         plt.title(plottitle)
         plt.plot(x_data, y_data, 'r-', label = ylabel , linewidth = 0.1)
         if DEBUG == 1:
-            print "First few elements of the x and y data are : ", x_data[0:3] ,'\n', y_data[0:3]
+            print( "First few elements of the x and y data are : ", x_data[0:3] ,'\n', y_data[0:3])
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
         plt.legend(loc = 'upper right')
         plt.savefig(savepath + savename, bbox_inches = 'tight', dpi=900 , quality = 100)
         plt.close()
     except Exception as e:
-        print "Exception at the plotting function in PlottingFunctions.py : ", e
+        print( "Exception at the plotting function in PlottingFunctions.py : ", e)
         file = open(LOGFILE, 'a')
         writer = csv.writer(file)
         writer.writerow([' Exception in the plotting function ',  ' Participant: ' , participant , ' Section : ', section , '  ' , ' Exception: ', e])
         file.close()
 def Plot3Data(x_data , y_data , z_data , ylabel , zlabel , plottitle , savename, LOGFILE, participant, section , savepath , verticallineindices=[0] , grid = 1, xlabel = 'Time (in Seconds)'):
     if DEBUG == 1:
-        print "Plotting function called for : ", ylabel
+        print( "Plotting function called for : ", ylabel)
     try:
         #starting the plot
         fig = plt.figure()
@@ -55,7 +55,7 @@ def Plot3Data(x_data , y_data , z_data , ylabel , zlabel , plottitle , savename,
         plt.plot(x_data, y_data, 'r-', label = ylabel , linewidth = 0.1)
         plt.plot(x_data, z_data, 'g--', label = zlabel)
         if DEBUG == 1:
-            print "First few elements of the x,y and z data are : ", x_data[0:3] ,'\n', y_data[0:3] , '\n', z_data[0:3]
+            print( "First few elements of the x,y and z data are : ", x_data[0:3] ,'\n', y_data[0:3] , '\n', z_data[0:3])
         if len(verticallineindices) > 1:#Meaning the verticallineindices array is not empty
             for i in range(len(verticallineindices)):
                 if verticallineindices[i]==1:
@@ -69,7 +69,7 @@ def Plot3Data(x_data , y_data , z_data , ylabel , zlabel , plottitle , savename,
         plt.savefig(savepath + savename, bbox_inches = 'tight', dpi=900 , quality=100)
         plt.close()
     except Exception as e:
-        print "Exception at the plotting function in PlottingFunctions.py : ", e
+        print( "Exception at the plotting function in PlottingFunctions.py : ", e)
         file = open(LOGFILE, 'a')
         writer = csv.writer(file)
         writer.writerow([' Exception in the plotting function ',  ' Participant: ' , participant , ' Section : ', section , '  ' , ' Exception: ', e])

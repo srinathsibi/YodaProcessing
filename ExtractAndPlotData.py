@@ -100,7 +100,7 @@ def SortFunc(e):
     return int( re.sub('P','',e) )
 #Function to estimate the sampling rate and plot it. it is not needed for later.
 def CalculateSamplingRate(time, participant, section):
-    if DEBUG ==1:   print " Function to estimate the sampling rate using the time list. "
+    if DEBUG ==1:   print(" Function to estimate the sampling rate using the time list. ")
     try:
         samplingrates =[]
         for i in range(len(time) - 1):
@@ -115,17 +115,17 @@ def CalculateSamplingRate(time, participant, section):
         plt.title('Raw Sampling Rate (Hz)')
         plt.plot(range(len(samplingrates[0:300])), samplingrates[0:300], 'r-', label =  'Sampling Rate', linewidth = 0.1)
         if DEBUG == 1:
-            print "First few elements of the x and y data are : ", x_data[0:3] ,'\n', y_data[0:3]
+            print ("First few elements of the x and y data are : ", x_data[0:3] ,'\n', y_data[0:3])
         plt.xlabel('Index')
         plt.ylabel('Sampling Rate')
         plt.legend(loc = 'upper right')
         plt.savefig(MAINPATH+'/Data/'+participant+'/'+section+'/SamplingFrequency.pdf', bbox_inches = 'tight', dpi=900 , quality = 100)
         plt.close()
-        if DEBUG==1:    print " Average sampling rate : " , mean(samplingrates)
+        if DEBUG==1:    print( " Average sampling rate : " , mean(samplingrates))
         return mean(samplingrates)
     except Exception as e:
-        print "Sampling rate calculation exception for participant: " , participant , ' in seciton: ' , section , 'Exception recorded: ' , e
-        print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
+        print( "Sampling rate calculation exception for participant: " , participant , ' in seciton: ' , section , 'Exception recorded: ' , e)
+        print( 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno))
         file = open(LOGFILE,'a')
         writer = csv.writer(file)
         writer.writerow(['Sampling rate calculation exception for participant: ', participant , 'in section' , section , 'Exception recorded: ', e , 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno) ])
@@ -134,7 +134,7 @@ def CalculateSamplingRate(time, participant, section):
 def Resample( time, signal , participant , section , target_fs = 1000.0 , type = 'ecg' ):
     # NOTE: type is not used yet. But might be in the future when we add GSR and IBI data
     try:
-        if DEBUG ==1:   print " The resampling function for " , participant , " section : " , section
+        if DEBUG ==1:   print( " The resampling function for " , participant , " section : " , section)
         # First we need to eliminate the repeating data points
         time_1 = [time[0]]# Intermediate to final resampling
         signal_1= [signal[0]]
@@ -145,7 +145,7 @@ def Resample( time, signal , participant , section , target_fs = 1000.0 , type =
                 elif time[i] != time[i-1]:
                     time_1.append(time[i])
                     signal_1.append(signal[i])
-        if DEBUG==1:    print "Raw Time sample : " , time[0:150] , "\n\n\nTime sample after repeat elimination: " , time_1[0:150]
+        if DEBUG==1:    print( "Raw Time sample : " , time[0:150] , "\n\n\nTime sample after repeat elimination: " , time_1[0:150])
         # The above section works
         # Before we make sure that we can samples in the data , we need to round to third decimal
         for i in range(len(time_1)):
@@ -155,14 +155,14 @@ def Resample( time, signal , participant , section , target_fs = 1000.0 , type =
         time_2 = np.arange( time_1[0] , time_1[-1] , N ).tolist()
         for i in range(len(time_2)):
             time_2[i] = round(time_2[i] , 3)
-        if DEBUG==1:    print "Time sample after repeat elimination : " , time_1[0:150] , "\n\n\nTime sample with target fs intervals: " , time_2[0:150]
+        if DEBUG==1:    print( "Time sample after repeat elimination : " , time_1[0:150] , "\n\n\nTime sample with target fs intervals: " , time_2[0:150])
         signal_2 = [np.nan]*len(time_2)
         # We need to create a list with
         # Now we need to make sure that we input the values in the time_1 array that matches the values in the time_2 array
         for i in range(len(time_2)):
             if time_2[i] in time_1:
                 signal_2[i] = signal_1[ time_1.index(time_2[i]) ]
-        if DEBUG==1:    print "Raw Signal sample:" , signal_1[0:100] , "\n\n\n Upsampled Signal: " , signal_2[0:100]
+        if DEBUG==1:    print( "Raw Signal sample:" , signal_1[0:100] , "\n\n\n Upsampled Signal: " , signal_2[0:100])
         ###################################################################################
         # The signal has been upsampled and the signal_2 and time_2 now have the target_fs and can be interpolated
         # BEGIN INTERPOLATION
@@ -171,7 +171,7 @@ def Resample( time, signal , participant , section , target_fs = 1000.0 , type =
         # CONVERTING THE UPSAMPLED PANDAS SERIES TO THE OUTPUT LIST
         signal_resampled = signal_pd.tolist()
         time_resampled = time_2
-        if DEBUG==1:    print "\n\n\n Upsampled Signal: " , signal_2[0:100] , "\n\n\nInterpolated Signal: " , signal_resampled[0:100]
+        if DEBUG==1:    print( "\n\n\n Upsampled Signal: " , signal_2[0:100] , "\n\n\nInterpolated Signal: " , signal_resampled[0:100])
         # I have confirmed by verification of data that the signal interpolate worked. Now we ensure by plotting some of the samples
         # USE THIS SECTION ONLY TO VERIFY THE ACCURACY OF THE RESAMPLING PROCESS
         #fig = plt.figure()
@@ -184,15 +184,15 @@ def Resample( time, signal , participant , section , target_fs = 1000.0 , type =
         #plt.show()
         return time_resampled , signal_resampled
     except Exception as e:
-        print "Resampling exception for participant: " , participant , ' in section: ' , section , 'Exception recorded: ' , e
-        print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
+        print ("Resampling exception for participant: " , participant , ' in section: ' , section , 'Exception recorded: ' , e)
+        print ('Error on line {}'.format(sys.exc_info()[-1].tb_lineno))
         file = open(LOGFILE,'a')
         writer = csv.writer(file)
         writer.writerow(['Resampling exception for participant: ', participant , 'in section' , section , 'Exception recorded: ', e , 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno) ])
         file.close()
 #Function to process the ECG data with the biosppy.
 def ProcessingHR(participant, section , PLOTANDSAVEHRDATA = 1):
-    if DEBUG ==0:   print " Processing the HR data for : " , participant,  "in section : " , section
+    if DEBUG ==0:   print (" Processing the HR data for : " , participant,  "in section : " , section)
     try:
         # we operate in the example folder in P002, but we no longer have to do this for later iters
         # opening the file
@@ -217,7 +217,7 @@ def ProcessingHR(participant, section , PLOTANDSAVEHRDATA = 1):
         time_resampled , ECG4_resampled = Resample( time , ECG4 , participant , section , 1000.0 , 'ecg' )
         if PLOTANDSAVEHRDATA ==1:
             # Write the resampled data to a file in case we might need it later
-            file = open( MAINPATH+'/Data/'+participant+ '/' + section + '/HR_resampled.csv' , 'wb')
+            file = open( MAINPATH+'/Data/'+participant+ '/' + section + '/HR_resampled.csv' , 'w')
             writer = csv.writer(file)
             writer.writerow( [ 'Time' , 'ECG1' , 'ECG2' , 'ECG3' , 'ECG4' ,])
             for i in range(len(time_resampled)):
@@ -242,8 +242,8 @@ def ProcessingHR(participant, section , PLOTANDSAVEHRDATA = 1):
                     try:
                         out = ecg.ecg(signal=ECG4_resampled, sampling_rate=1000.0 , show=False)
                     except Exception as e:
-                        print "Biosppy Processing Exception in ecg.ecg for participant: " , participant , ' in seciton: ' , section , 'Exception recorded: ' , e
-                        print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
+                        print( "Biosppy Processing Exception in ecg.ecg for participant: " , participant , ' in seciton: ' , section , 'Exception recorded: ' , e)
+                        print( 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno))
                         file = open(LOGFILE,'a')
                         writer = csv.writer(file)
                         writer.writerow([' Biosppy Processing Exception in ecg.ecg for participant: ', participant , 'in section' , section , 'Exception recorded: ', e , 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno) ])
@@ -260,8 +260,8 @@ def ProcessingHR(participant, section , PLOTANDSAVEHRDATA = 1):
         # NOTE: HEART_RATE_TS STARTS AT 0. NEED TO ADD THE START OF THE HEART_RATE_TS
         # r peaks are the indices in the 'filtered' ECG signal at which there are peaks
         # NOTE: We don't know what templates_ts or templates are. They seem to be same length.
-        if DEBUG==1:    print " The output of the biosppy processing: " , "\n\n\n Output keys : " , out.keys()#, " Output as dict : " , out.as_dict(), '\n\n\n' , len(out[-1]) , '\n\n\n' , len(out[-2]) , 'r-peaks' , len(out[2])
-        if DEBUG==1:    print "The length of the heart rate signal is : " , len( out.as_dict()['heart_rate'] ) , "\n\nThe heart rate time is : " , out.as_dict()['heart_rate']
+        if DEBUG==1:    print( " The output of the biosppy processing: " , "\n\n\n Output keys : " , out.keys())#, " Output as dict : " , out.as_dict(), '\n\n\n' , len(out[-1]) , '\n\n\n' , len(out[-2]) , 'r-peaks' , len(out[2])
+        if DEBUG==1:    print( "The length of the heart rate signal is : " , len( out.as_dict()['heart_rate'] ) , "\n\nThe heart rate time is : " , out.as_dict()['heart_rate'])
         # Data is separated here.
         ts = out.as_dict()['ts']
         filtered = out.as_dict()['filtered']
@@ -273,7 +273,7 @@ def ProcessingHR(participant, section , PLOTANDSAVEHRDATA = 1):
             maximumHeartRate = max(heartrate)
         elif section in ['GoAroundRocks']:
             maximumHeartRate= max(heartrate[60:-1])#This is hard coded. But it is okay, since all the participants have the same length at event 1.
-            print "Average Baseline Heart Rate for participant : " , participant , " is: " , mean(heartrate[0:59])
+            print( "Average Baseline Heart Rate for participant : " , participant , " is: " , mean(heartrate[0:59]))
         if PLOTANDSAVEHRDATA == 1:
             # We now plot and save the figure for later
             fig = plt.figure()
@@ -309,7 +309,7 @@ def ProcessingHR(participant, section , PLOTANDSAVEHRDATA = 1):
                     IBI.append( ts[rpeaks[i]] - ts[rpeaks[i-1]] )
                     IBI_ts.append( ts[rpeaks[i]] )
             # We need to save the entire output
-            file = open(MAINPATH+'/Data/'+participant+'/' + section + '/ECGOuputData.csv' , 'wb')
+            file = open(MAINPATH+'/Data/'+participant+'/' + section + '/ECGOuputData.csv' , 'w')
             writer = csv.writer(file)
             writer.writerow(['ts', 'filtered', 'rpeaks', 'heart_rate_ts', 'heart_rate' , 'IBI_ts' , 'IBI'])#Header
             #Write each row as we simultaneously assemble them
@@ -346,8 +346,8 @@ def ProcessingHR(participant, section , PLOTANDSAVEHRDATA = 1):
             #Returning the maximum HR value in the interval
             return maximumHeartRate
     except Exception as e:
-        print "HR Processing Exception Catcher for participant: " , participant , 'Exception recorded: ' , e
-        print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
+        print( "HR Processing Exception Catcher for participant: " , participant , 'Exception recorded: ' , e)
+        print( 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno))
         file = open(LOGFILE,'a')
         writer = csv.writer(file)
         writer.writerow([' HR Processing Function Exception Caught for participant: ', participant , 'Exception recorded: ', e , 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno) ])
@@ -355,7 +355,7 @@ def ProcessingHR(participant, section , PLOTANDSAVEHRDATA = 1):
 #Function to analyze the GSR data with biosppy eda function
 def ProcessingGSR(participant, section , GSR_MIN_THRESHOLD=0.1 , PLOTANDSAVEGSRDATA=1 ):
     try:
-        print " Processing the GSR data for : ", participant , ' in section : ' , section
+        print( " Processing the GSR data for : ", participant , ' in section : ' , section)
         #Opening the GSR File. For now, we operate in the Example file for now
         file = open(MAINPATH+'/Data/'+participant+'/' +section + '/GSR.csv' , 'r')
         reader = csv.reader(file)
@@ -371,7 +371,7 @@ def ProcessingGSR(participant, section , GSR_MIN_THRESHOLD=0.1 , PLOTANDSAVEGSRD
         time_resampled , gsr_resampled = Resample(time , gsr , participant , section , target_fs = 1000.0 , type = 'gsr')
         if PLOTANDSAVEGSRDATA == 1:
             #Saving the resampled file.
-            file = open( MAINPATH+'/Data/'+participant+'/' +section + '/GSR_resampled.csv' , 'wb' )
+            file = open( MAINPATH+'/Data/'+participant+'/' +section + '/GSR_resampled.csv' , 'w' )
             writer = csv.writer(file)
             writer.writerow(['Time' , 'GSR'])
             for i in range(len(time_resampled)):
@@ -405,8 +405,8 @@ def ProcessingGSR(participant, section , GSR_MIN_THRESHOLD=0.1 , PLOTANDSAVEGSRD
         # filtered -> Filtered GSR signal.
         # onsets -> onset contains the indices of the ts array at which there are onsets marked
         # peaks -> peaks contains the indices of the ts array at which the peaks are recorded.
-        if DEBUG==1:    print " The keys in output for the GSR file is : " , out.keys()
-        if DEBUG==1:    print " The time samples in the resampled list and the output of the eda.eda list are: " , time_resampled[0:10] , '\n\n' , out.as_dict()['ts'][0:10]
+        if DEBUG==1:    print( " The keys in output for the GSR file is : " , out.keys())
+        if DEBUG==1:    print( " The time samples in the resampled list and the output of the eda.eda list are: " , time_resampled[0:10] , '\n\n' , out.as_dict()['ts'][0:10])
         #Separating out the data
         ts_temp = list(out.as_dict()['ts'])
         ts = [ ts_temp[i]/10 for i in range(len(ts_temp)) ]
@@ -448,7 +448,7 @@ def ProcessingGSR(participant, section , GSR_MIN_THRESHOLD=0.1 , PLOTANDSAVEGSRD
             plt.savefig( MAINPATH+'/Data/'+participant+'/' + section + '/FilteredGSRSignal.pdf', bbox_inches = 'tight', dpi=950 , quality = 100)
             plt.close()
             # Plots are done. Moving on to saving the data.
-            file = open( MAINPATH+'/Data/'+participant+'/'+section+'/GSROutputData.csv', 'wb')
+            file = open( MAINPATH+'/Data/'+participant+'/'+section+'/GSROutputData.csv', 'w')
             writer = csv.writer(file)
             writer.writerow(['Time' , 'Filtered GSR' , 'Onsets' , 'Peaks' , 'Amplitude'])
             for i in range(len(ts)):
@@ -474,8 +474,8 @@ def ProcessingGSR(participant, section , GSR_MIN_THRESHOLD=0.1 , PLOTANDSAVEGSRD
             file.close()
         return len(peaks)#Return the number of peaks detected in the given interval
     except Exception as e:
-        print "GSR Processing Exception Catcher for participant: " , participant , 'in section:', section , 'Exception recorded: ' , e
-        print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
+        print( "GSR Processing Exception Catcher for participant: " , participant , 'in section:', section , 'Exception recorded: ' , e)
+        print( 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno))
         file = open(LOGFILE,'a')
         writer = csv.writer(file)
         writer.writerow([' GSR Processing Function Exception Caught for participant: ', participant , 'in section:', section , 'Exception recorded:', e , 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno) ])
@@ -483,7 +483,7 @@ def ProcessingGSR(participant, section , GSR_MIN_THRESHOLD=0.1 , PLOTANDSAVEGSRD
 #Function to calculate the peaks in all the GSR data and then organize them accodingly
 def Altgsrprocessing(participant, Events , MarkerTimes , GSR_MIN_THRESHOLD =0.2):
     try:
-        print " Alternate Processing GSR for participant: " , participant
+        print( " Alternate Processing GSR for participant: " , participant)
         #First we read the data from the GSR file and resample it.
         # Reading the data from the GSR csv file.
         file = open(GSR_FILE_NAME, 'r')
@@ -504,7 +504,7 @@ def Altgsrprocessing(participant, Events , MarkerTimes , GSR_MIN_THRESHOLD =0.2)
         MIDPOINT = MarkerTimes[2]+20# Hard stop at 40 seconds after the first failure
         first_peaks_count = []
         while windowstop <= MIDPOINT:
-            if DEBUG==1:    print " window times are : ", windowstart , ' ' , windowstop
+            if DEBUG==1:    print( " window times are : ", windowstart , ' ' , windowstop)
             #Locate the indices of the windowstart and windowstop in the time array
             index_windowstart = find_nearest( np.asarray(time) , windowstart)
             index_windowstop = find_nearest( np.asarray(time) , windowstop)
@@ -534,7 +534,7 @@ def Altgsrprocessing(participant, Events , MarkerTimes , GSR_MIN_THRESHOLD =0.2)
             # End of processing for the window
             windowstart = windowstop
             windowstop = windowstart+step
-        print " The count of all the peaks in participant " , participant , " before the Failure1 event are:\n " , first_peaks_count
+        print( " The count of all the peaks in participant " , participant , " before the Failure1 event are:\n " , first_peaks_count)
         ########################################################################
         #AFTER FAILURE1
         step = 50
@@ -543,7 +543,7 @@ def Altgsrprocessing(participant, Events , MarkerTimes , GSR_MIN_THRESHOLD =0.2)
         ENDPOINT = time[-1]#Last time value in the array
         second_peaks_count = []
         while windowstop <= ENDPOINT:
-            if DEBUG==1:    print " window times are : ", windowstart , ' ' , windowstop
+            if DEBUG==1:    print( " window times are : ", windowstart , ' ' , windowstop)
             #Locate the indices of the windowstart and windowstop in the time array
             index_windowstart = find_nearest( np.asarray(time) , windowstart )
             index_windowstop = find_nearest( np.asarray(time) , windowstop )
@@ -572,7 +572,7 @@ def Altgsrprocessing(participant, Events , MarkerTimes , GSR_MIN_THRESHOLD =0.2)
             # End of processing for the window
             windowstart = windowstop
             windowstop = windowstart + step
-        print " The count of all the peaks in participant " , participant , "after the Failure1 event are:\n " , second_peaks_count
+        print( " The count of all the peaks in participant " , participant , "after the Failure1 event are:\n " , second_peaks_count)
         # We open a peaks_count file in the main directory and then aggregate the data for analysis.
         file = open(MAINPATH+'/Peaks_Count.csv' , 'a')
         writer = csv.writer(file)
@@ -582,8 +582,8 @@ def Altgsrprocessing(participant, Events , MarkerTimes , GSR_MIN_THRESHOLD =0.2)
         writer.writerow(info)
         file.close()
     except Exception as e:
-        print "GSR Alternate Processing Exception Catcher for participant: " , participant , 'Exception recorded: ' , e
-        print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
+        print( "GSR Alternate Processing Exception Catcher for participant: " , participant , 'Exception recorded: ' , e)
+        print( 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno))
         file = open(LOGFILE,'a')
         writer = csv.writer(file)
         writer.writerow([' GSR Alternate Processing Function Exception Caught for participant: ', participant , 'Exception recorded:', e , 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno) ])
@@ -591,7 +591,7 @@ def Altgsrprocessing(participant, Events , MarkerTimes , GSR_MIN_THRESHOLD =0.2)
 # Function to analyze the PPG data. This is handwritten since biosppy doesn't have functions for this. A
 def ProcessingPPG(participant, section , PLOTANDSAVEPPGDATA=1):
     try:
-        print " Processing the PPG values for participant " , participant , " in section " , section
+        print( " Processing the PPG values for participant " , participant , " in section " , section)
         sectionpath = MAINPATH+'/Data/'+participant+'/' +section + '/'
         #load data
         file = open(sectionpath+'PPG.csv','r')
@@ -640,7 +640,7 @@ def ProcessingPPG(participant, section , PLOTANDSAVEPPGDATA=1):
             plt.savefig( sectionpath + 'FilteredPPGSignal.pdf', bbox_inches = 'tight', dpi=900 , quality = 100)
             plt.close()
             # We save the data. There is no anlaysis to be done here.
-            file = open(sectionpath+'PPGOutputData.csv' , 'wb')
+            file = open(sectionpath+'PPGOutputData.csv' , 'w')
             writer = csv.writer(file)
             writer.writerow(['Time' , 'HeartRate(From PPG)' , 'IBI_ts' , 'IBI'])
             for i in range(len(time_resampled)):
@@ -661,8 +661,8 @@ def ProcessingPPG(participant, section , PLOTANDSAVEPPGDATA=1):
                 writer.writerow(outputrow)
             file.close()
     except Exception as e:
-        print "PPG Processing Exception Catcher for participant: " , participant , 'in section:', section , 'Exception recorded: ' , e
-        print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
+        print( "PPG Processing Exception Catcher for participant: " , participant , 'in section:', section , 'Exception recorded: ' , e)
+        print( 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno))
         file = open(LOGFILE,'a')
         writer = csv.writer(file)
         writer.writerow([' PPG Processing Function Exception Caught for participant: ', participant , 'in section:' , section ,  'Exception recorded:', e , 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno) ])
@@ -681,18 +681,18 @@ def iMotionsTimeConverter(inputcode):
 #Main Function
 if __name__ == '__main__':
     #Opening the Logging file
-    file = open(LOGFILE , 'wb')
+    file = open(LOGFILE , 'w')
     writer = csv.writer(file)
     writer.writerow(['The output for the Plotting and Sampling the Data.'])
     file.close()
     try:
-        #print " The Main Function for the Plotting and Sampling Function"
+        #print( " The Main Function for the Plotting and Sampling Function")
         listoffolders = os.listdir(MAINPATH+'/Data/')
         #Sort the Folders
         listoffolders.sort(key=SortFunc)
-        if DEBUG == 1:  print "\nThe list of folder:", listoffolders
-        for participant in listoffolders:
-            print "\n\nAnalyzing the data for participant: " , participant
+        if DEBUG == 1:  print( "\nThe list of folder:", listoffolders)
+        for participant in ['P002']:#listoffolders:
+            print( "\n\nAnalyzing the data for participant: " , participant)
             #path to the contents of the folder.
             folderpath = MAINPATH+'/Data/'+participant+'/'
             #opening the iMotions File in each folder
@@ -708,7 +708,7 @@ if __name__ == '__main__':
                 if READANDEXTRACTINDIVIDUALFILES == 1:
                     file = open(folderpath+ participant + '.txt','r')
                     reader = csv.reader(file)
-                    #print "First and Second lines in file: " , next(reader)
+                    #print( "First and Second lines in file: " , next(reader))
                     #We need to take the first 6 lines of the data out to record in a new info file, should we need it later.
                     InfoList =[]
                     for i in range(6):
@@ -720,20 +720,20 @@ if __name__ == '__main__':
                             InfoList.append(next(reader))
                     #If the process worked, the last row should be the header column
                     if DEBUG == 1:
-                        print "\n\n\nInfoList :\n" , InfoList
+                        print( "\n\n\nInfoList :\n" , InfoList)
                     data = list(reader)#Super List of lists containing all the data in one location.
                     file.close()
                     #Write the info file
-                    file = open(folderpath+participant+'iMotionsInfo.txt','wb')
+                    file = open(folderpath+participant+'iMotionsInfo.txt','w')
                     writer = csv.writer(file)
                     writer.writerows(InfoList)
                     file.close()
                     #To ensure that there are no empty cells in the data uber-list , we delete the first 30 rows.
                     for i in range(TOPELIMINATION):
                         data.remove( data[0] )#We always remove the first element
-                    if DEBUG==0 and participant in CAT1:    print "\n\n\nParticipant in CAT1 , " , participant
-                    if DEBUG==0 and participant in CAT2:    print "\n\n\nParticipant in CAT2 , " , participant
-                    if DEBUG==0 and participant in CAT3:    print "\n\n\nParticipant in CAT3 , " , participant
+                    if DEBUG==0 and participant in CAT1:    print( "\n\n\nParticipant in CAT1 , " , participant)
+                    if DEBUG==0 and participant in CAT2:    print( "\n\n\nParticipant in CAT2 , " , participant)
+                    if DEBUG==0 and participant in CAT3:    print( "\n\n\nParticipant in CAT3 , " , participant)
                     #Now to make sure that the rows are properly divided
                     #re_data = []
                     # We are abandoning the process of compiling the data into a single array for each participant. It seems too large and almost always ends in the code crashing. Instead, we
@@ -741,10 +741,10 @@ if __name__ == '__main__':
                     # array.
                     #First we make the files
                     #open the files
-                    GSR_FILE = open(GSR_FILE_NAME, 'wb')
-                    HR_FILE = open(HR_FILE_NAME, 'wb')
-                    DRIVE_FILE = open(DRIVE_FILE_NAME, 'wb')
-                    PPG_FILE = open(PPG_FILE_NAME , 'wb')
+                    GSR_FILE = open(GSR_FILE_NAME, 'w')
+                    HR_FILE = open(HR_FILE_NAME, 'w')
+                    DRIVE_FILE = open(DRIVE_FILE_NAME, 'w')
+                    PPG_FILE = open(PPG_FILE_NAME , 'w')
                     #Declaring writers
                     GSR_WRITER = csv.writer(GSR_FILE)
                     HR_WRITER = csv.writer(HR_FILE)
@@ -831,9 +831,9 @@ if __name__ == '__main__':
                         reader = csv.reader(file)
                         headerrow = next(reader)
                         data_ = list(reader)
-                        if DEBUG == 1:  print "\n Header row: " , headerrow
+                        if DEBUG == 1:  print( "\n Header row: " , headerrow)
                         data = list(reader)
-                        if DEBUG == 1:  print "\n First Row of Data: ", data_[0]
+                        if DEBUG == 1:  print( "\n First Row of Data: ", data_[0])
                         length = len(data_[0])# This is the length of the arrays in data_
                         length = length - 3# We discount the first three columns since they are timestamps
                         t = [ float(data_[i][2]) for i in range(len(data_)) ]
@@ -855,7 +855,7 @@ if __name__ == '__main__':
                     data_ = list(reader)
                     markers = [ float(row[3]) for row in data_ ]
                     time = [ float(row[2]) for row in data_ ]
-                    if DEBUG==1:    print "Time and Markers: ", time[1:10], markers[1:10]
+                    if DEBUG==1:    print( "Time and Markers: ", time[1:10], markers[1:10])
                     file.close()
                     #################
                     # Marker Noise elimination section:
@@ -873,13 +873,13 @@ if __name__ == '__main__':
                         if abs( markers_filtered[i+1] - markers_filtered[i] ) > 0:
                             changesinmarkers[i+1] = 1
                     # Section to write the marker file
-                    file = open(MARKER_FILE_NAME, 'wb')
+                    file = open(MARKER_FILE_NAME, 'w')
                     writer = csv.writer(file)
                     writer.writerow(['AbsoluteTime' , 'Markers', 'Filtered Markers' , 'Changes in Markers'])
                     for i in range(len(time)):
                         writer.writerow([ time[i] , markers[i] , markers_filtered[i] , changesinmarkers[i] ])
                     file.close()
-                    if DEBUG ==1:   print "\nMarker File Written for participant: ", participant
+                    if DEBUG ==1:   print( "\nMarker File Written for participant: ", participant)
                     ###########
                     #Plotting the Filtered Markers
                     Plot2Data( time, markers_filtered , 'Filtered Markers' , 'Plot of Filtered Markers for participant '+participant , 'FilteredMarkers.pdf' , LOGFILE , participant , folderpath )
@@ -887,7 +887,7 @@ if __name__ == '__main__':
                     if REWRITEABRIDGEDMARKERFILE == 1:
                         # I am going to write a new file with < Abs Time , Count , Event , Marker Start , Marker End >. This is the abridged key for processing the data
                         MARKER_FILE_SHORT_NAME = MAINPATH+'/Data/'+participant+'/MARKERS_SHORT.csv'
-                        file = open(MARKER_FILE_SHORT_NAME,'wb')
+                        file = open(MARKER_FILE_SHORT_NAME,'w')
                         writer = csv.writer(file)
                         writer.writerow([' Abridged file for Markers '])
                         writer.writerow(['AbsoluteTime', 'Count' , 'Filtered Marker Old' , 'Filtered Marker New' , 'Event'])
@@ -897,13 +897,13 @@ if __name__ == '__main__':
                                 sum = sum+1
                                 writer.writerow([time[i] , sum , markers_filtered[i-1] , markers_filtered[i] , ' '])
                         file.close()
-                        if DEBUG ==1:   print "\nAbridged Marker File Written for participant: ", participant
+                        if DEBUG ==1:   print( "\nAbridged Marker File Written for participant: ", participant)
                 ##################################################################################################
                 ##################################################################################################
                 if SEGMENTDATA ==1:
                     try:
                         # We read the MARKERS_SHORT.csv file and get the times for the event and save them in subfolders with the HR and GSR data
-                        print " Segmenting data for participant : ", participant
+                        print( " Segmenting data for participant : ", participant)
                         #Open Abridged marker file :
                         file = open(folderpath+'MARKERS_SHORT.csv' , 'r')
                         reader = csv.reader(file)
@@ -919,13 +919,13 @@ if __name__ == '__main__':
                         for row in data:
                             if row[4] in Events:
                                 MarkerTimes.append(float(row[0]))
-                        if DEBUG==0:    print " Marker Times for the events are : " , MarkerTimes
+                        if DEBUG==0:    print( " Marker Times for the events are : " , MarkerTimes)
                         #############
                         # Marker Times are recorded. We now move on to creating folders
                         for eventfolder in Events:
                             if not os.path.exists(folderpath+eventfolder):
                                 os.makedirs(folderpath+eventfolder)
-                        if DEBUG==1:    print " Folder for the events are created : " , os.listdir(folderpath)
+                        if DEBUG==1:    print( " Folder for the events are created : " , os.listdir(folderpath))
                         #############
                         # Folders are created, we now move on to the clipping the data.
                         # We segment the 4 files one at a time.
@@ -951,9 +951,9 @@ if __name__ == '__main__':
                                 index_Marker = find_nearest( np.asarray(time) , MarkerTimes[i] )
                                 index_windowstart = find_nearest( np.asarray(time) , windowstart )
                                 index_windowend = find_nearest( np.asarray(time) , windowend )
-                                if DEBUG == 1:  print " Verification of marker index using find_nearest function for : ", event , " is " , time[index_Marker]
+                                if DEBUG == 1:  print( " Verification of marker index using find_nearest function for : ", event , " is " , time[index_Marker])
                                 # Need to create a file for writing the data
-                                file = open (folderpath+event+'/GSR.csv' ,'wb')
+                                file = open (folderpath+event+'/GSR.csv' ,'w')
                                 writer = csv.writer(file)
                                 writer.writerow(['Time' , 'Marker' , 'GSR'])
                                 # Now that we have the indices, we can clip the relevant information and write to the file
@@ -982,9 +982,9 @@ if __name__ == '__main__':
                                 index_Marker = find_nearest( np.asarray(time) , MarkerTimes[i] )
                                 index_windowstart = find_nearest( np.asarray(time) , windowstart )
                                 index_windowend = find_nearest( np.asarray(time) , windowend )
-                                if DEBUG == 1:  print " Verification of marker index using find_nearest function for : " , event , " is " , time[index_Marker]
+                                if DEBUG == 1:  print( " Verification of marker index using find_nearest function for : " , event , " is " , time[index_Marker])
                                 # Need to create a file for writing the data
-                                file = open ( folderpath+event+'/HR.csv' , 'wb')
+                                file = open ( folderpath+event+'/HR.csv' , 'w')
                                 writer = csv.writer(file)
                                 writer.writerow([ 'Time' , 'Marker' , 'ECG1' , 'ECG2' , 'ECG3' , 'ECG4' ])
                                 # Now that we have the indices, we can clip the relevant information and write to the file
@@ -1010,9 +1010,9 @@ if __name__ == '__main__':
                                 index_Marker = find_nearest( np.asarray(time) , MarkerTimes[i] )
                                 index_windowend = find_nearest( np.asarray(time) , windowend )
                                 index_windowstart = find_nearest( np.asarray(time), windowstart )
-                                if DEBUG == 1: print " Verification of marker index using find_nearest function for : ", event , " is " , time[index_Marker]
+                                if DEBUG == 1: print( " Verification of marker index using find_nearest function for : ", event , " is " , time[index_Marker])
                                 # Output for the PPG file
-                                file = open( folderpath+event+'/PPG.csv' , 'wb' )
+                                file = open( folderpath+event+'/PPG.csv' , 'w' )
                                 writer = csv.writer(file)
                                 writer.writerow( [ 'Time' , 'Marker' , 'PPG' , 'IBI' ] )#Header
                                 for i in range(index_windowstart, index_windowend):
@@ -1039,17 +1039,17 @@ if __name__ == '__main__':
                                 index_Marker = find_nearest(np.asarray(time) , MarkerTimes[i] )
                                 index_windowstart = find_nearest(np.asarray(time) , windowstart )
                                 index_windowend = find_nearest(np.asarray(time) , windowend )
-                                if DEBUG == 1: print " Verification of marker index using find_nearest function for : ", event , " is " , time[index_Marker]
+                                if DEBUG == 1: print( " Verification of marker index using find_nearest function for : ", event , " is " , time[index_Marker])
                                 #output file writing
-                                file = open(folderpath+event+'/DRIVE.csv' , 'wb' )
+                                file = open(folderpath+event+'/DRIVE.csv' , 'w' )
                                 writer= csv.writer(file)
                                 writer.writerow([ 'Time' , 'Marker' , 'Brake' , 'Speed' , 'Steer' , 'Throttle' ])#Header
                                 for i in range(index_windowstart , index_windowend):
                                     writer.writerow([ time[i] , marker[i] , brake[i] , speed[i] , steer[i] , throttle[i] ])
                                 file.close()
                     except Exception as e:
-                        print " Exception recorded for participant in the Segmentation process : " , participant , " Error : ", e
-                        print  'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
+                        print( " Exception recorded for participant in the Segmentation process : " , participant , " Error : ", e)
+                        print(  'Error on line {}'.format(sys.exc_info()[-1].tb_lineno))
                         file = open(LOGFILE, 'a')
                         writer = csv.writer(file)
                         writer.writerow([' Exception for participant ', participant , 'Exception : ', e , 'on line {}'.format(sys.exc_info()[-1].tb_lineno)])
@@ -1153,7 +1153,7 @@ if __name__ == '__main__':
                     for item in DeleteList:
                         if os.path.exists(MAINPATH+'/Data/'+participant+'/'+item):
                             os.remove(MAINPATH+'/Data/'+participant+'/'+item)
-                            if DEBUG ==1:   print "Deleted: " , item
+                            if DEBUG ==1:   print( "Deleted: " , item)
                 ##################################################################################################
                 ##################################################################################################
                 if BACKUPDATA == 1:
@@ -1164,7 +1164,7 @@ if __name__ == '__main__':
                             if os.path.exists(MAINPATH+'/AuxillaryInformation/BackupofImportantData/' + participant+item):#Remove the file in the target location.
                                 os.remove(MAINPATH+'/AuxillaryInformation/BackupofImportantData/' + participant+item)
                             shutil.copy(MAINPATH+'/Data/'+participant+'/'+item , MAINPATH+'/AuxillaryInformation/BackupofImportantData/' + participant+item)#Adding the participant name to the item name before
-                            print "File moved ", item
+                            print( "File moved ", item)
                     #Section level information to backup
                     insectionbackuplist = ['FilteredPPGSignal.pdf' , 'FilteredGSRSignal.pdf' , 'FilteredECGSignal.pdf']
                     Events = [ 'GoAroundRocks' , 'CurvedRoads' , 'Failure1' , 'HighwayExit' , 'RightTurn1' , 'RightTurn2' , 'PedestrianEvent' , 'TurnRight3' , 'BicycleEvent' , 'TurnRight4' , 'TurnRight5'\
@@ -1176,19 +1176,19 @@ if __name__ == '__main__':
                                 if os.path.exists(MAINPATH+'/AuxillaryInformation/BackupofImportantData/' + participant+event+item):#Remove the file in the target location.
                                     os.remove(MAINPATH+'/AuxillaryInformation/BackupofImportantData/' + participant+event+item)
                                 shutil.copy(sectionpath+item , MAINPATH+'/AuxillaryInformation/BackupofImportantData/' + participant+event+item)
-                                print "File moved for section",event, "File moved:" , item
+                                print( "File moved for section",event, "File moved:" , item)
                 ##################################################################################################
                 ##################################################################################################
             except Exception as e:
-                print " Exception recorded for participant : ", participant, "Error is : ", e
-                print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
+                print( " Exception recorded for participant : ", participant, "Error is : ", e)
+                print( 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno))
                 file = open(LOGFILE, 'a')
                 writer = csv.writer(file)
                 writer.writerow([' Exception for participant ', participant , 'Exception : ', e , 'on line {}'.format(sys.exc_info()[-1].tb_lineno)])
                 file.close()
     except Exception as e:
-        print "Main Exception Catcher" ,e
-        print 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno)
+        print( "Main Exception Catcher" ,e)
+        print( 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno))
         file = open(LOGFILE,'a')
         writer = csv.writer(file)
         writer.writerow([' Main Function Exception Catcher ',e,'Error on line {}'.format(sys.exc_info()[-1].tb_lineno) ])
